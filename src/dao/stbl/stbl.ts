@@ -12,13 +12,17 @@ import RevenueRouterABI from 'abi/RevenueRouterABI';
 import { now } from 'src/utils/now';
 import XSTBLAbi from 'abi/XSTBLABI';
 import { sleep } from 'src/utils/sleep';
+import { ChainsService } from 'src/chains/chains.service';
+import { Injectable } from '@nestjs/common';
 
+@Injectable()
 export class STBlDao extends DaoService {
   public static symbol = 'STBL';
   private isLive: boolean;
 
   constructor(
     dao: IDAO,
+    chains: ChainsService,
     subgraphProvider: SubgraphService,
     rpcProvider: RpcService,
   ) {
@@ -27,14 +31,14 @@ export class STBlDao extends DaoService {
         `Failed to initialize STBL DAO service. Expected ${STBlDao.symbol}, got ${dao.symbol}`,
       );
 
-    super(dao, subgraphProvider, rpcProvider);
+    super(dao, chains, subgraphProvider, rpcProvider);
 
     this.isLive = isLive(this.dao);
   }
 
   async getRevenueChart(): Promise<RevenueChart> {
     if (!this.isLive) return {};
-    const chains = this.getChains();
+    const chains = this.chains.getChainIds();
 
     const charts = await Promise.all(
       chains.map((chainId) => this.getRevenueChartForChain(chainId)),
@@ -45,7 +49,7 @@ export class STBlDao extends DaoService {
 
   async getOnchainData(): Promise<OnChainData> {
     if (!this.isLive) return {};
-    const chains = this.getChains();
+    const chains = this.chains.getChainIds();
 
     const data = await Promise.all(
       chains.map(async (chainId) => [
@@ -279,9 +283,5 @@ export class STBlDao extends DaoService {
       functionName: 'pendingRevenue',
       args: [0n],
     }) as Promise<bigint>;
-  }
-
-  private getChains(): string[] {
-    return Object.keys(this.dao.deployments);
   }
 }

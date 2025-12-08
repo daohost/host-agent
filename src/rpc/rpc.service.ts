@@ -6,7 +6,7 @@ import { createPublicClient, http, PublicClient } from 'viem';
 export class RpcService {
   private publicClientsMap: Map<string, PublicClient> = new Map();
   constructor(private readonly chains: ChainsService) {
-    for (const chainId in this.chains.getChainIds()) {
+    for (const chainId of this.chains.getChainIds()) {
       const chain = this.chains.getChainById(chainId);
       if (!chain) {
         continue;

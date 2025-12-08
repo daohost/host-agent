@@ -30,7 +30,8 @@ export class DefiLlamaService {
     const chainData = chainDataResponse.data;
 
     for (const chain of chainData) {
-      const isKnownChain = !!this.chains.getChainById(chain.chainId.toString());
+      const isKnownChain =
+        chain.chainId && !!this.chains.getChainById(chain.chainId.toString());
       if (!isKnownChain) {
         continue;
       }

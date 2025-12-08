@@ -11,8 +11,8 @@ export class SubgraphService {
     private readonly httpService: HttpService,
     private readonly chainsService: ChainsService,
   ) {
-    for (const chainId in this.chainsService.getChainIds()) {
-      if (deployments[chainId].subgraph) {
+    for (const chainId of this.chainsService.getChainIds()) {
+      if (deployments[chainId]?.subgraph) {
         this.subgraphMap.set(chainId, deployments[chainId].subgraph);
       }
     }

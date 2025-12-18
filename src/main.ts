@@ -29,6 +29,7 @@ async function bootstrap() {
       'https://alpha.stabilitydao.org',
       'https://beta.stability.farm',
       'https://stability.market',
+      'https://dao.host/',
       'http://localhost:4321',
       'http://localhost:3000',
     ],

@@ -225,7 +225,9 @@ export class STBlDao extends DaoService {
       ? (deployments[chainId].tokenomics.xSTBL as Address)
       : undefined;
 
-    if (!xStblAddress) throw new Error('xSTBL address not found');
+    if (!xStblAddress) {
+      return 0n;
+    }
 
     return publicClient.readContract({
       abi: XSTBLAbi as Abi,
@@ -240,8 +242,7 @@ export class STBlDao extends DaoService {
       ? deployments[chainId].tokenomics.revenueRouter
       : undefined;
 
-    if (!revenueRouterAddress)
-      throw new Error('RevenueRouter address not found');
+    if (!revenueRouterAddress) return 0n;
 
     return publicClient.readContract({
       abi: RevenueRouterABI as Abi,
@@ -254,11 +255,14 @@ export class STBlDao extends DaoService {
     publicClient: PublicClient,
   ): Promise<bigint> {
     const chainId = publicClient.chain?.id;
+
     const xStblAddress = chainId
       ? (deployments[chainId].tokenomics.xSTBL as Address)
       : undefined;
 
-    if (!xStblAddress) throw new Error('xSTBL address not found');
+    if (!xStblAddress) {
+      return 0n;
+    }
     return publicClient.readContract({
       abi: XSTBLAbi as Abi,
       address: xStblAddress,
@@ -266,14 +270,15 @@ export class STBlDao extends DaoService {
     }) as Promise<bigint>;
   }
 
-  private getLendingRevenue(publicClient: PublicClient): Promise<bigint> {
+  private async getLendingRevenue(publicClient: PublicClient): Promise<bigint> {
     const chainId = publicClient.chain?.id;
     const revenueRouterAddress = chainId
       ? deployments[chainId].tokenomics.revenueRouter
       : undefined;
 
-    if (!revenueRouterAddress)
-      throw new Error('RevenueRouter address not found');
+    if (!revenueRouterAddress) {
+      return 0n;
+    }
 
     return publicClient.readContract({
       abi: RevenueRouterABI as Abi,

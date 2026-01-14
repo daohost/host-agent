@@ -236,7 +236,7 @@ export class GithubService implements OnModuleInit {
       builders: buildersMemory,
       daos: this.getDaosFullData(),
       chainTvl: analytics.chainTvls,
-      prices: {},
+      prices: analytics.prices,
     };
   }
 

@@ -1,7 +1,6 @@
-import { IDAO } from "@stabilitydao/stability";
-import { LifecyclePhase } from "@stabilitydao/stability/out/os";
+import { IDAOData, LifecyclePhase } from '@stabilitydao/host/out/host';
 
-export function isLive(dao: IDAO): boolean {
+export function isLive(dao: IDAOData): boolean {
   return [
     LifecyclePhase.LIVE_VESTING,
     LifecyclePhase.LIVE,

@@ -1,10 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { IBuildersMemory } from '@stabilitydao/stability/out/activity/builder';
-import * as os from '@stabilitydao/stability/out/os';
-import { IDAO } from '@stabilitydao/stability/out/os';
-import { daos } from '@stabilitydao/stability/out/daos';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import { App, Octokit } from 'octokit';
@@ -12,7 +8,11 @@ import { FullIssue, Issues } from './types/issue';
 import { RevenueService } from 'src/revenue/revenue.service';
 import { OnChainDataService } from 'src/on-chain-data/on-chain-data.service';
 import { AnalyticsService } from 'src/analytics/analytics.service';
-
+import { IDAOData } from '@stabilitydao/host/out/host';
+import { daos } from '@stabilitydao/host/out';
+import { IBuildersMemory } from '@stabilitydao/host/out/activity/builder';
+import { IOSMemory } from '@stabilitydao/host/out/api';
+import { sleep } from 'src/utils/sleep';
 dotenv.config();
 
 @Injectable()
@@ -23,7 +23,7 @@ export class GithubService implements OnModuleInit {
   private message: string;
   private logger = new Logger(GithubService.name);
   private installationId: number;
-  private daos: IDAO[];
+  private daos: IDAOData[];
 
   private handleIssueIsRunning = false;
   private fullSyncIsRunning = false;
@@ -99,7 +99,7 @@ export class GithubService implements OnModuleInit {
 
   private async waitForUnlock() {
     while (this.handleIssueIsRunning || this.fullSyncIsRunning) {
-      await this.sleep(300);
+      await sleep(3);
     }
   }
 
@@ -166,7 +166,7 @@ export class GithubService implements OnModuleInit {
 
   async syncLabels() {
     for (const dao of this.daos) {
-      const builder = dao.builderActivity;
+      const builder = dao.daoMetaData?.builderActivity;
       if (!builder) {
         this.logger.error('Builder agent not found');
         continue;
@@ -229,7 +229,7 @@ export class GithubService implements OnModuleInit {
     }
   }
 
-  getOSMemory(): os.IOSMemory {
+  getOSMemory(): IOSMemory {
     const buildersMemory = this.getBuilderMemory();
     const analytics = this.analyticsService.getAnalytics();
     return {
@@ -249,7 +249,7 @@ export class GithubService implements OnModuleInit {
         openIssues: { pools: {}, total: {} },
       };
 
-      const agent = dao.builderActivity;
+      const agent = dao.daoMetaData?.builderActivity;
 
       for (const repo of Object.keys(this.issues)) {
         poolsMemory[dao.symbol].openIssues.total[repo] =
@@ -307,8 +307,8 @@ export class GithubService implements OnModuleInit {
     return poolsMemory;
   }
 
-  private getDaosFullData(): os.IOSMemory['daos'] {
-    const result: os.IOSMemory['daos'] = {};
+  private getDaosFullData(): IOSMemory['daos'] {
+    const result: IOSMemory['daos'] = {};
     for (const dao of this.daos) {
       result[dao.symbol] = {
         oraclePrice: '0',
@@ -321,7 +321,7 @@ export class GithubService implements OnModuleInit {
   }
   private async updateIssues() {
     for (const dao of this.daos) {
-      const builder = dao.builderActivity;
+      const builder = dao.daoMetaData?.builderActivity;
       if (!builder) continue;
 
       const repos = builder.repo ?? [];
@@ -393,9 +393,5 @@ export class GithubService implements OnModuleInit {
       body: issue.body ?? '',
       repo,
     };
-  }
-
-  private sleep(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

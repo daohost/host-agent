@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Chain, chains } from '@stabilitydao/stability';
+import { IChain, chains } from '@stabilitydao/host/out/chains';
+
 import * as allChains from 'viem/chains';
 import { Chain as ViemChain } from 'viem/chains';
 
 @Injectable()
 export class ChainsService {
-  private chainsById: { [chainId: string]: Chain };
-  private chainByName: { [name: string]: Chain };
+  private chainsById: { [chainId: string]: IChain };
+  private chainByName: { [name: string]: IChain };
 
   private readonly DISABLED_CHAINS_ENV_KEY = 'DISABLED_CHAINS';
   constructor(private readonly configService: ConfigService) {

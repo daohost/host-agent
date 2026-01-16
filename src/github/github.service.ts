@@ -1,18 +1,13 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { IBuildersMemory } from '@stabilitydao/stability/out/activity/builder';
-import * as os from '@stabilitydao/stability/out/os';
-import { IDAO } from '@stabilitydao/stability/out/os';
-import { daos } from '@stabilitydao/stability/out/daos';
+import { daoMetaData, daos } from '@stabilitydao/host/out';
+import { IDAOData } from '@stabilitydao/host/out/host';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import { App, Octokit } from 'octokit';
+import { sleep } from 'src/utils/sleep';
 import { FullIssue, Issues } from './types/issue';
-import { RevenueService } from 'src/revenue/revenue.service';
-import { OnChainDataService } from 'src/on-chain-data/on-chain-data.service';
-import { AnalyticsService } from 'src/analytics/analytics.service';
-
 dotenv.config();
 
 @Injectable()
@@ -23,18 +18,17 @@ export class GithubService implements OnModuleInit {
   private message: string;
   private logger = new Logger(GithubService.name);
   private installationId: number;
-  private daos: IDAO[];
+  private daos: IDAOData[];
 
   private handleIssueIsRunning = false;
   private fullSyncIsRunning = false;
 
-  constructor(
-    private config: ConfigService,
-    private readonly revenueService: RevenueService,
-    private readonly onChainDataService: OnChainDataService,
-    private readonly analyticsService: AnalyticsService,
-  ) {
+  constructor(private config: ConfigService) {
     this.daos = daos;
+    for (const dao of this.daos) {
+      const metadata = daoMetaData[dao.symbol.toLowerCase()];
+      dao.daoMetaData = metadata;
+    }
   }
 
   async onModuleInit() {
@@ -69,52 +63,6 @@ export class GithubService implements OnModuleInit {
   @Cron(CronExpression.EVERY_HOUR)
   async hourlyFullSync() {
     await this.fullIssuesUpdate();
-  }
-
-  private async resolveInstallationId() {
-    const envInstallationId = this.config.get<number>('INSTALLATION_ID');
-    if (envInstallationId) {
-      this.installationId = envInstallationId;
-      this.logger.log(`Using installation ID from .env: ${envInstallationId}`);
-      return;
-    }
-
-    const { data: installations } =
-      await this.app.octokit.rest.apps.listInstallations();
-
-    if (!installations.length) {
-      throw new Error('No installations found for GitHub App');
-    }
-
-    this.installationId = installations[0].id;
-    this.logger.log(`Detected installation ID: ${this.installationId}`);
-  }
-
-  private async getOctokit() {
-    if (!this.installationId) {
-      await this.resolveInstallationId();
-    }
-    return this.app.getInstallationOctokit(this.installationId);
-  }
-
-  private async waitForUnlock() {
-    while (this.handleIssueIsRunning || this.fullSyncIsRunning) {
-      await this.sleep(300);
-    }
-  }
-
-  private async fullIssuesUpdate() {
-    await this.waitForUnlock();
-    this.fullSyncIsRunning = true;
-
-    try {
-      await this.updateIssues();
-      this.logger.log('Full issues update completed.');
-    } catch (error) {
-      this.logger.error(`Full issues update failed: ${error}`);
-    } finally {
-      this.fullSyncIsRunning = false;
-    }
   }
 
   async handlePROpened(payload: any) {
@@ -166,7 +114,7 @@ export class GithubService implements OnModuleInit {
 
   async syncLabels() {
     for (const dao of this.daos) {
-      const builder = dao.builderActivity;
+      const builder = dao.daoMetaData?.builderActivity;
       if (!builder) {
         this.logger.error('Builder agent not found');
         continue;
@@ -229,99 +177,66 @@ export class GithubService implements OnModuleInit {
     }
   }
 
-  getOSMemory(): os.IOSMemory {
-    const buildersMemory = this.getBuilderMemory();
-    const analytics = this.analyticsService.getAnalytics();
-    return {
-      builders: buildersMemory,
-      daos: this.getDaosFullData(),
-      chainTvl: analytics.chainTvls,
-      prices: analytics.prices,
-    };
+  getRepos() {
+    return Object.keys(this.issues);
   }
 
-  getBuilderMemory(): IBuildersMemory {
-    const poolsMemory: any = {};
+  getIssues() {
+    return Object.values(this.issues).flat();
+  }
+  getIssuesByRepo(repo: string) {
+    return this.issues[repo];
+  }
 
-    for (const dao of this.daos) {
-      poolsMemory[dao.symbol] = {
-        conveyors: {},
-        openIssues: { pools: {}, total: {} },
-      };
-
-      const agent = dao.builderActivity;
-
-      for (const repo of Object.keys(this.issues)) {
-        poolsMemory[dao.symbol].openIssues.total[repo] =
-          this.issues[repo].length;
-      }
-
-      for (const pool of agent?.pools ?? []) {
-        poolsMemory[dao.symbol].openIssues.pools[pool.name] = [];
-
-        const issues = Object.values(this.issues).flat();
-        const filtered = issues.filter((issue) =>
-          issue.labels.some((l) => l.name === pool.label.name),
-        );
-
-        poolsMemory[dao.symbol].openIssues.pools[pool.name].push(...filtered);
-      }
-
-      const conveyorsMemory: any = {};
-      for (const conveyor of agent?.conveyors ?? []) {
-        conveyorsMemory[conveyor.name] = {};
-
-        for (const step of conveyor.steps) {
-          for (const issue of step.issues) {
-            const repoKey = issue.repo;
-            const stored = this.issues[repoKey] || [];
-
-            stored.forEach((i) => {
-              const taskId = this.extractTaskId(
-                i.title,
-                conveyor.issueTitleTemplate,
-                conveyor.taskIdIs,
-              );
-
-              if (!taskId) return;
-
-              if (!conveyorsMemory[conveyor.name][taskId]) {
-                conveyorsMemory[conveyor.name][taskId] = {};
-              }
-
-              const stepName = this.extractIssueStep(i.title);
-
-              if (!conveyorsMemory[conveyor.name][taskId][stepName]) {
-                conveyorsMemory[conveyor.name][taskId][stepName] = [];
-              }
-
-              conveyorsMemory[conveyor.name][taskId][stepName].push(i);
-            });
-          }
-        }
-      }
-
-      poolsMemory[dao.symbol].conveyors = conveyorsMemory;
+  private async resolveInstallationId() {
+    const envInstallationId = this.config.get<number>('INSTALLATION_ID');
+    if (envInstallationId) {
+      this.installationId = envInstallationId;
+      this.logger.log(`Using installation ID from .env: ${envInstallationId}`);
+      return;
     }
 
-    return poolsMemory;
+    const { data: installations } =
+      await this.app.octokit.rest.apps.listInstallations();
+
+    if (!installations.length) {
+      throw new Error('No installations found for GitHub App');
+    }
+
+    this.installationId = installations[0].id;
+    this.logger.log(`Detected installation ID: ${this.installationId}`);
   }
 
-  private getDaosFullData(): os.IOSMemory['daos'] {
-    const result: os.IOSMemory['daos'] = {};
-    for (const dao of this.daos) {
-      result[dao.symbol] = {
-        oraclePrice: '0',
-        coingeckoPrice: '0',
-        revenueChart: this.revenueService.getRevenueChart(dao.symbol),
-        onChainData: this.onChainDataService.getOnChainData(dao.symbol),
-      };
+  private async getOctokit() {
+    if (!this.installationId) {
+      await this.resolveInstallationId();
     }
-    return result;
+    return this.app.getInstallationOctokit(this.installationId);
   }
+
+  private async waitForUnlock() {
+    while (this.handleIssueIsRunning || this.fullSyncIsRunning) {
+      await sleep(3);
+    }
+  }
+
+  private async fullIssuesUpdate() {
+    await this.waitForUnlock();
+    this.fullSyncIsRunning = true;
+
+    try {
+      await this.updateIssues();
+      this.logger.log('Full issues update completed.');
+    } catch (error) {
+      this.logger.error(`Full issues update failed: ${error}`);
+    } finally {
+      this.fullSyncIsRunning = false;
+    }
+  }
+
   private async updateIssues() {
     for (const dao of this.daos) {
-      const builder = dao.builderActivity;
+      const builder = dao?.daoMetaData?.builderActivity;
       if (!builder) continue;
 
       const repos = builder.repo ?? [];
@@ -346,31 +261,6 @@ export class GithubService implements OnModuleInit {
     }
   }
 
-  private extractIssueStep(title: string): string {
-    const step = title.split(': ');
-    return step[step.length - 1];
-  }
-
-  private extractTaskId(
-    title: string,
-    template: string,
-    taskIdIs: string,
-  ): string | null {
-    const escapedTemplate = template.replace(/([.*+?^${}()|[\]\\])/g, '\\$1');
-    const regexPattern = escapedTemplate.replace(
-      /%([A-Z0-9_]+)%/g,
-      (_, varName) => `(?<${varName}>.+?)`,
-    );
-
-    const regex = new RegExp('^' + regexPattern + '$');
-    const match = title.match(regex);
-
-    if (!match || !match.groups) return null;
-
-    const variable = taskIdIs.replace(/%/g, '');
-    return match.groups[variable] ?? null;
-  }
-
   private issueToDTO(
     issue: Awaited<
       ReturnType<typeof this.app.octokit.rest.issues.listForRepo>
@@ -393,9 +283,5 @@ export class GithubService implements OnModuleInit {
       body: issue.body ?? '',
       repo,
     };
-  }
-
-  private sleep(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

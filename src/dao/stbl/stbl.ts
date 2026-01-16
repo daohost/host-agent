@@ -1,5 +1,3 @@
-import { deployments, IDAO } from '@stabilitydao/stability';
-import { RevenueChart } from '@stabilitydao/stability/out/api.types';
 import { DaoService } from '../abstract-dao';
 import { OnChainData, RawUnitsData } from '../types/dao';
 import { isLive } from '../utils';
@@ -12,6 +10,9 @@ import RevenueRouterABI from 'abi/RevenueRouterABI';
 import { now } from 'src/utils/now';
 import XSTBLAbi from 'abi/XSTBLABI';
 import { Injectable } from '@nestjs/common';
+import { deployments } from '@stabilitydao/stability';
+import { IDAOData } from '@stabilitydao/host/out/host';
+import { RevenueChart } from '@stabilitydao/host/out/api';
 
 @Injectable()
 export class STBlDao extends DaoService {
@@ -19,7 +20,7 @@ export class STBlDao extends DaoService {
   private isLive: boolean;
 
   constructor(
-    dao: IDAO,
+    dao: IDAOData,
     subgraphProvider: SubgraphService,
     rpcProvider: RpcService,
   ) {

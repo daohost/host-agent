@@ -1,4 +1,4 @@
-import { IOSMemory } from '@stabilitydao/stability/out/os';
+import { IOSMemory } from '@stabilitydao/host/out/api';
 import { DaoService } from '../abstract-dao';
 
 export type OnChainData = IOSMemory['daos'][string]['onChainData'];

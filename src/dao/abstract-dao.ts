@@ -1,16 +1,16 @@
-import { RevenueChart } from '@stabilitydao/stability/out/api.types';
-import { IDAO } from '@stabilitydao/stability/out/os';
 import { RpcService } from 'src/rpc/rpc.service';
 import { SubgraphService } from 'src/subgraph/subgraph.service';
 import { OnChainData } from './types/dao';
+import { IDAOData } from '@stabilitydao/host/out/host';
+import { RevenueChart } from '@stabilitydao/host/out/api';
 
 export abstract class DaoService {
-  dao: IDAO;
+  dao: IDAOData;
 
   subgraphProvider: SubgraphService;
   rpcProvider: RpcService;
   constructor(
-    dao: IDAO,
+    dao: IDAOData,
     subgraphProvider: SubgraphService,
     rpcProvider: RpcService,
   ) {

@@ -27,7 +27,7 @@ export class MemoryService {
       builders: buildersMemory,
       daos: this.getDaosFullData(),
       chainTvl: analytics.chainTvls,
-      prices: {},
+      prices: analytics.prices,
     };
   }
 

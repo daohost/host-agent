@@ -2,7 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { deployments } from '@stabilitydao/stability';
 import { firstValueFrom } from 'rxjs';
-import { ChainsService } from 'src/chains/chains.service';
+import { ChainsService } from '../chains/chains.service';
 
 @Injectable()
 export class SubgraphService {

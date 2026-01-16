@@ -1,7 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
-import { statusOk } from 'src/utils/statusOk';
+import { statusOk } from '../utils/statusOk';
 
 @Injectable()
 export class DexscreenerService {

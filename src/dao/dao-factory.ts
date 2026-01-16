@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { SubgraphService } from 'src/subgraph/subgraph.service';
+import { SubgraphService } from '../subgraph/subgraph.service';
 import { DaoService } from './abstract-dao';
 import { STBlDao } from './stbl/stbl';
-import { RpcService } from 'src/rpc/rpc.service';
+import { RpcService } from '../rpc/rpc.service';
 import { isLive } from './utils';
 import { IDAOData } from '@stabilitydao/host/out/host';
 

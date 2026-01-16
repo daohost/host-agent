@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { OnChainDataService } from './on-chain-data.service';
-import { DaoModule } from 'src/dao/dao.module';
+import { DaoModule } from '../dao/dao.module';
 
 @Module({
   providers: [OnChainDataService],

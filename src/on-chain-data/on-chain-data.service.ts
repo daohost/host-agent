@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { daos } from '@stabilitydao/host/out/storage/daos';
-import { DaoFactory } from 'src/dao/dao-factory';
-import { OnChainData } from 'src/dao/types/dao';
+import { DaoFactory } from '../dao/dao-factory';
+import { OnChainData } from '../dao/types/dao';
 
 @Injectable()
 export class OnChainDataService {

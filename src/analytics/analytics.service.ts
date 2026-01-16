@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { DefiLlamaService } from 'src/chain-data-provider/defilama.service';
-import { DexscreenerService } from 'src/chain-data-provider/dexscreener.service';
+import { DefiLlamaService } from '../chain-data-provider/defilama.service';
+import { DexscreenerService } from '../chain-data-provider/dexscreener.service';
 import { Analytics } from './types/analytics';
 import { analyticsAssets } from './config/analytics-config';
 import { Cron, CronExpression } from '@nestjs/schedule';

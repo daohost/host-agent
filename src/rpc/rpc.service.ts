@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ChainsService } from 'src/chains/chains.service';
+import { ChainsService } from '../chains/chains.service';
 import { createPublicClient, http, PublicClient } from 'viem';
 
 @Injectable()

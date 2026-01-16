@@ -3,10 +3,10 @@ import { IBuildersMemory } from '@stabilitydao/host/out/activity/builder';
 import { IOSMemory } from '@stabilitydao/host/out/api';
 import { IDAOData } from '@stabilitydao/host/out/host';
 import { daos } from '@stabilitydao/host/out';
-import { AnalyticsService } from 'src/analytics/analytics.service';
-import { GithubService } from 'src/github/github.service';
-import { OnChainDataService } from 'src/on-chain-data/on-chain-data.service';
-import { RevenueService } from 'src/revenue/revenue.service';
+import { AnalyticsService } from '../analytics/analytics.service';
+import { GithubService } from '../github/github.service';
+import { OnChainDataService } from '../on-chain-data/on-chain-data.service';
+import { RevenueService } from '../revenue/revenue.service';
 
 @Injectable()
 export class MemoryService {

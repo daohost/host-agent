@@ -6,7 +6,7 @@ import { IDAOData } from '@stabilitydao/host/out/host';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import { App, Octokit } from 'octokit';
-import { sleep } from 'src/utils/sleep';
+import { sleep } from '../utils/sleep';
 import { FullIssue, Issues } from './types/issue';
 dotenv.config();
 

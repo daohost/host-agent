@@ -1,8 +1,8 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
-import { ChainsService } from 'src/chains/chains.service';
-import { statusOk } from 'src/utils/statusOk';
+import { ChainsService } from '../chains/chains.service';
+import { statusOk } from '../utils/statusOk';
 import { ChainDataResponse } from './types/defillama';
 
 @Injectable()

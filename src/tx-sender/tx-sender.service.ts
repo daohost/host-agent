@@ -188,11 +188,6 @@ export class TxSenderService {
 
       return sim.request as WriteContractParameters;
     } catch (e) {
-      this.logger.warn(
-        `[${tx.chainId}] Failed to simulate tx ${tx.type}-${tx.id}`,
-      );
-
-      tx.retries -= 1;
       return null;
     }
   }

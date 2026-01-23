@@ -8,8 +8,13 @@ import {
   WriteContractParameters,
 } from 'viem';
 import { TxQueue } from './tx-sender.queu';
-import { SentTransactionResult, Transaction } from './tx-sender.types';
+import {
+  SentTransactionResult,
+  Transaction,
+  TransactionResult,
+} from './tx-sender.types';
 import { v4 } from 'uuid';
+import { TxMonitoringService } from './tx-monitoring.service';
 
 @Injectable()
 export class TxSenderService {
@@ -17,7 +22,10 @@ export class TxSenderService {
 
   private readonly queue: TxQueue = new TxQueue();
   private isProcessing = false;
-  constructor(private readonly rpcService: RpcService) {}
+  constructor(
+    private readonly rpcService: RpcService,
+    private readonly monitoring: TxMonitoringService,
+  ) {}
 
   @Cron(CronExpression.EVERY_MINUTE)
   async handleCron() {
@@ -45,7 +53,12 @@ export class TxSenderService {
   }
 
   private async processSingleTx(tx: Transaction) {
-    let success = false;
+    const result: SentTransactionResult = {
+      status: TransactionResult.UNKNOWN,
+      hash: 'N/A',
+      spent: '0',
+    };
+
     try {
       const publicClient = this.rpcService.getPublicClient(tx.chainId);
       if (!publicClient) {
@@ -54,7 +67,10 @@ export class TxSenderService {
       }
       const sim = await this.simulateTx(tx, publicClient);
 
-      if (!sim) return;
+      if (!sim) {
+        result.status = TransactionResult.SIMULATION_FAILED;
+        return;
+      }
 
       this.logger.log(`[${tx.chainId}] Sending tx ${tx.type}-${tx.id}`);
 
@@ -65,27 +81,94 @@ export class TxSenderService {
         return;
       }
 
-      const result = await this.sendTx(tx, sim, publicClient, walletClient);
+      const sendTxResult = await this.sendTx(
+        tx,
+        sim,
+        publicClient,
+        walletClient,
+      ).catch((e) => {
+        this.logger.warn(`[${tx.chainId}] Failed to send tx: ${e.message}`);
+        result.status = TransactionResult.SENDING_ERROR;
+        result.error = e.message;
+      });
 
-      if (!result) return;
-
-      success = true;
+      if (sendTxResult) {
+        result.spent = sendTxResult.spent;
+        result.hash = sendTxResult.hash;
+        result.status = sendTxResult.status;
+      }
     } catch (e) {
       this.logger.error(e);
       this.logger.error(
         `[${tx.chainId}] Failed to process tx ${tx.type}-${tx.id}`,
       );
     } finally {
-      if (success) this.queue.remove();
-      else {
-        if (tx.retries <= 0) this.queue.remove();
-        else {
-          this.logger.log(
-            `[${tx.chainId}] Moving tx to the end of queue ${tx.type}-${tx.id}`,
-          );
-          this.queue.moveToEnd(tx.id);
-        }
-      }
+      this.sendReport(tx, result);
+    }
+  }
+
+  private sendReport(tx: Transaction, result: SentTransactionResult) {
+    switch (result.status) {
+      case TransactionResult.SUCCESS:
+        this.logger.log(
+          `[${tx.chainId}] Recorded successful tx ${tx.type}-${tx.id} | Gas: ${result.spent} | Hash: ${result.hash}`,
+        );
+        this.queue.remove();
+        this.monitoring.recordSuccess(
+          tx.chainId,
+          tx.type,
+          tx.id,
+          result.hash,
+          result.spent,
+        );
+        break;
+
+      case TransactionResult.REVERTED:
+        this.queue.remove();
+        this.logger.error(
+          `[${tx.chainId}] Reverted tx ${tx.type}-${tx.id}. Hash: ${result.hash}`,
+        );
+        this.monitoring.recordFailure(
+          tx.chainId,
+          tx.type,
+          tx.id,
+          result.hash,
+          result.spent,
+          TransactionResult.REVERTED,
+        );
+        break;
+
+      case TransactionResult.SENDING_ERROR:
+        tx.retries -= 1;
+        this.logger.error(
+          `[${tx.chainId}] Failed to send tx ${tx.type}-${tx.id}. Error ${result.error}`,
+        );
+        this.monitoring.recordFailure(
+          tx.chainId,
+          tx.type,
+          tx.id,
+          result.hash,
+          result.spent,
+          TransactionResult.SENDING_ERROR,
+        );
+        break;
+
+      case TransactionResult.SIMULATION_FAILED:
+        tx.retries -= 1;
+        this.logger.error(
+          `[${tx.chainId}] Failed to simulate tx ${tx.type}-${tx.id}`,
+        );
+        this.monitoring.recordFailure(
+          tx.chainId,
+          tx.type,
+          tx.id,
+          result.hash,
+          result.spent,
+          TransactionResult.SIMULATION_FAILED,
+        );
+        break;
+      default:
+        break;
     }
   }
 
@@ -119,32 +202,27 @@ export class TxSenderService {
     params: WriteContractParameters,
     publicClient: PublicClient,
     client: WalletClient,
-  ): Promise<SentTransactionResult | null> {
+  ): Promise<SentTransactionResult> {
     this.logger.log(`[${tx.chainId}] Sending tx ${tx.type}-${tx.id}`);
-    try {
-      const hash = await client.writeContract(params);
+    const hash = await client.writeContract(params);
 
-      const transaction = await publicClient.waitForTransactionReceipt({
-        hash,
-        timeout: 180_000,
-      });
+    const transaction = await publicClient.waitForTransactionReceipt({
+      hash,
+      timeout: 180_000,
+    });
 
-      const spent = formatUnits(
-        BigInt(transaction.gasUsed) * transaction.effectiveGasPrice,
-        18,
-      );
+    const spent = formatUnits(
+      BigInt(transaction.gasUsed) * transaction.effectiveGasPrice,
+      18,
+    );
 
-      return {
-        hash,
-        spent,
-      };
-    } catch (e) {
-      this.logger.error(
-        `[${tx.chainId}] Failed to send tx ${tx.type}-${tx.id}`,
-      );
-
-      tx.retries = 0;
-      return null;
-    }
+    return {
+      hash,
+      spent,
+      status:
+        transaction.status === 'reverted'
+          ? TransactionResult.REVERTED
+          : TransactionResult.SUCCESS,
+    };
   }
 }

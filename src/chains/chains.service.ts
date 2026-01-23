@@ -16,7 +16,7 @@ export class ChainsService {
       }
       return acc;
     }, {});
-    this.chainByName = Object.entries(chains).reduce((acc, [id, chain]) => {
+    this.chainByName = Object.entries(chains).reduce((acc, [_, chain]) => {
       if (chain.status != ChainStatus.NOT_SUPPORTED) {
         acc[chain.name] = chain;
       }

@@ -49,6 +49,7 @@ lerna-debug.log*
 .temp
 .tmp
 /temp
+/tx-reports
 
 # Runtime data
 pids

@@ -12,6 +12,8 @@ export type Transaction = {
 export type SentTransactionResult = {
   hash: string;
   spent: string;
+  status: TransactionResult;
+  error?: string;
 };
 
 export enum TransactionType {
@@ -19,20 +21,28 @@ export enum TransactionType {
   UPDATE_OTHER_CHAINS_POWERS = 'update-other-chains-powers',
 }
 
+export enum TransactionResult {
+  SUCCESS = 'success',
+  REVERTED = 'reverted',
+  SENDING_ERROR = 'sending-error',
+  SIMULATION_FAILED = 'simulation-failed',
+  UNKNOWN = 'unknown',
+}
+
 export interface TransactionReport {
   hash: string;
-  chainId: number;
+  chainId: string;
   type: string;
   id: string;
   gasSpent: string;
   timestamp: Date;
-  status: 'success' | 'failed';
+  status: TransactionResult;
   errorMessage?: string;
   retries?: number;
 }
 
 export interface ChainReport {
-  chainId: number;
+  chainId: string;
   totalTransactions: number;
   successfulTransactions: number;
   failedTransactions: number;

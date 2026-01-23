@@ -2,32 +2,54 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { ChainReport, TransactionReport } from './tx-sender.types';
+import {
+  ChainReport,
+  TransactionReport,
+  TransactionResult,
+} from './tx-sender.types';
+import { RpcService } from 'src/rpc/rpc.service';
+import { ChainsService } from 'src/chains/chains.service';
+import { IHostAgentMemory } from '@stabilitydao/host';
+import { formatUnits } from 'viem';
+import { now } from 'src/utils/now';
+import { AnalyticsService } from 'src/analytics/analytics.service';
 
 @Injectable()
 export class TxMonitoringService implements OnModuleInit {
+  spendingReport?: IHostAgentMemory['txSender'];
+
   private readonly logger = new Logger(TxMonitoringService.name);
-  private readonly reportsDir = join(process.cwd(), 'tx-reports');
+  private readonly reportsDir = join(process.cwd(), 'temp/tx-reports');
   private readonly dailyReportsDir = join(this.reportsDir, 'daily');
 
-  // In-memory cache for current reports
-  private chainReports: Map<number, ChainReport> = new Map();
+  private lastTxTs = 0;
+
+  private chainReports: Map<string, ChainReport> = new Map();
+
+  constructor(
+    private readonly rpcService: RpcService,
+    private readonly chains: ChainsService,
+    private readonly analyticsService: AnalyticsService,
+  ) {}
 
   async onModuleInit() {
     await this.ensureDirectories();
     await this.loadExistingReports();
+    await this.initializeSpendingReport();
+
+    const account = this.rpcService.getAccountAddress();
+    this.logger.log(`Account: ${account}`);
+
+    const chains = this.chains.getChains();
+    this.logger.log(`Chains: ${chains.map((c) => c.name).join(', ')}`);
   }
 
-  /**
-   * Record a successful transaction
-   */
   async recordSuccess(
-    chainId: number,
+    chainId: string,
     txType: string,
     txId: string,
     hash: string,
     gasSpent: string,
-    retries?: number,
   ) {
     const report: TransactionReport = {
       hash,
@@ -36,49 +58,44 @@ export class TxMonitoringService implements OnModuleInit {
       id: txId,
       gasSpent,
       timestamp: new Date(),
-      status: 'success',
-      retries,
+      status: TransactionResult.SUCCESS,
     };
 
     await this.addReport(chainId, report);
     this.logger.log(
       `[${chainId}] Recorded successful tx ${txType}-${txId} | Gas: ${gasSpent} ETH | Hash: ${hash}`,
     );
+
+    this.updateSpendingReport(chainId, gasSpent);
   }
 
-  /**
-   * Record a failed transaction
-   */
   async recordFailure(
-    chainId: number,
+    chainId: string,
     txType: string,
     txId: string,
     errorMessage: string,
-    retries?: number,
+    gasSpent: string,
+    status: TransactionResult,
   ) {
     const report: TransactionReport = {
       hash: 'N/A',
       chainId,
       type: txType,
       id: txId,
-      gasSpent: '0',
+      gasSpent,
       timestamp: new Date(),
-      status: 'failed',
+      status,
       errorMessage,
-      retries,
     };
 
     await this.addReport(chainId, report);
     this.logger.warn(
       `[${chainId}] Recorded failed tx ${txType}-${txId} | Error: ${errorMessage}`,
     );
+    this.updateSpendingReport(chainId, gasSpent);
   }
 
-  /**
-   * Add a report to the chain's report file
-   */
-  private async addReport(chainId: number, report: TransactionReport) {
-    // Update in-memory cache
+  private async addReport(chainId: string, report: TransactionReport) {
     let chainReport = this.chainReports.get(chainId);
 
     if (!chainReport) {
@@ -108,14 +125,10 @@ export class TxMonitoringService implements OnModuleInit {
       chainReport.failedTransactions++;
     }
 
-    // Save to file
     await this.saveChainReport(chainId, chainReport);
   }
 
-  /**
-   * Save chain report to file
-   */
-  private async saveChainReport(chainId: number, report: ChainReport) {
+  private async saveChainReport(chainId: string, report: ChainReport) {
     const filename = join(this.reportsDir, `chain-${chainId}.json`);
 
     try {
@@ -125,9 +138,6 @@ export class TxMonitoringService implements OnModuleInit {
     }
   }
 
-  /**
-   * Generate daily summary report
-   */
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async generateDailySummary() {
     const date = new Date();
@@ -153,7 +163,6 @@ export class TxMonitoringService implements OnModuleInit {
             `Gas: ${report.totalGasSpent} ETH`,
         );
 
-        // Reset daily stats but keep transactions for reference
         report.transactions = [];
         report.totalTransactions = 0;
         report.successfulTransactions = 0;
@@ -168,23 +177,14 @@ export class TxMonitoringService implements OnModuleInit {
     }
   }
 
-  /**
-   * Get report for a specific chain
-   */
-  getChainReport(chainId: number): ChainReport | null {
+  getChainReport(chainId: string): ChainReport | null {
     return this.chainReports.get(chainId) || null;
   }
 
-  /**
-   * Get all chain reports
-   */
   getAllReports(): ChainReport[] {
     return Array.from(this.chainReports.values());
   }
 
-  /**
-   * Get summary statistics
-   */
   getSummaryStats() {
     const allReports = this.getAllReports();
 
@@ -214,9 +214,6 @@ export class TxMonitoringService implements OnModuleInit {
     };
   }
 
-  /**
-   * Log periodic stats
-   */
   @Cron(CronExpression.EVERY_HOUR)
   logStats() {
     const stats = this.getSummaryStats();
@@ -240,9 +237,6 @@ export class TxMonitoringService implements OnModuleInit {
     }
   }
 
-  /**
-   * Helper: Ensure necessary directories exist
-   */
   private async ensureDirectories() {
     try {
       await fs.mkdir(this.reportsDir, { recursive: true });
@@ -253,9 +247,68 @@ export class TxMonitoringService implements OnModuleInit {
     }
   }
 
-  /**
-   * Helper: Load existing reports on startup
-   */
+  private async initializeSpendingReport() {
+    const accountAddress = this.rpcService.getAccountAddress();
+
+    if (!accountAddress) {
+      this.logger.warn('No account address found');
+      return;
+    }
+
+    this.spendingReport = {
+      account: accountAddress,
+      balance: {},
+      spent: {},
+    };
+    const chains = this.chains.getChains();
+    for (const chain of chains) {
+      const client = this.rpcService.getPublicClient(chain.chainId.toString());
+      if (!client) {
+        continue;
+      }
+      const balance = await client.getBalance({
+        address: accountAddress,
+      });
+
+      this.spendingReport.balance[chain.chainId] = {
+        coin: formatUnits(balance, 18),
+        usd: 0,
+      };
+    }
+  }
+
+  private async updateSpendingReport(chainId: string, gasSpent: string) {
+    if (!this.spendingReport) {
+      return;
+    }
+    const nativePrice = this.analyticsService.getNativePriceForChain(chainId);
+
+    const usdSpent = nativePrice * Number(gasSpent);
+
+    if (!usdSpent) {
+      return;
+    }
+
+    const lastReport = this.spendingReport.spent[this.lastTxTs] ?? {
+      txs: 0,
+      usd: {},
+    };
+
+    const txs = lastReport.txs + 1;
+    const usd = (lastReport.usd[chainId] ?? 0) + usdSpent;
+
+    const newReport = {
+      txs,
+      usd: {
+        ...lastReport.usd,
+        [chainId]: usd,
+      },
+    };
+
+    this.spendingReport.spent[now()] = newReport;
+    this.lastTxTs = now();
+  }
+
   private async loadExistingReports() {
     try {
       const files = await fs.readdir(this.reportsDir);
@@ -275,19 +328,13 @@ export class TxMonitoringService implements OnModuleInit {
     }
   }
 
-  /**
-   * Helper: Add two gas values (as strings to maintain precision)
-   */
   private addGasValues(a: string, b: string): string {
     const aNum = parseFloat(a) || 0;
     const bNum = parseFloat(b) || 0;
     return (aNum + bNum).toFixed(18);
   }
 
-  /**
-   * Export report as CSV for a specific chain
-   */
-  async exportToCSV(chainId: number): Promise<string | null> {
+  async exportToCSV(chainId: string): Promise<string | null> {
     const report = this.chainReports.get(chainId);
     if (!report) return null;
 

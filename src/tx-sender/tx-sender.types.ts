@@ -4,6 +4,7 @@ export type Transaction = {
   id: string;
   type: TransactionType;
   chainId: string;
+  account?: `0x${string}`;
   retries: number;
   data: SimulateContractParameters;
 };

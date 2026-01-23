@@ -95,7 +95,10 @@ export class TxSenderService {
   ): Promise<WriteContractParameters | null> {
     this.logger.log(`[${tx.chainId}] Simulating tx ${tx.type}-${tx.id}`);
     try {
-      const sim = await client.simulateContract({ ...tx.data });
+      const sim = await client.simulateContract({
+        ...tx.data,
+        account: tx.account,
+      });
       this.logger.log(
         `[${tx.chainId}] Simulated tx successfully ${tx.type}-${tx.id}`,
       );

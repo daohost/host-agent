@@ -93,6 +93,7 @@ export class DaoPowerService {
       id: this.txSenderService.generateTxId(),
       retries: 3,
       type: TransactionType.UPDATE_OTHER_CHAINS_POWERS,
+      account: this.rpcService.getAccountAddress(),
       data: {
         abi: IDAO as Abi,
         address: tokenAddress,

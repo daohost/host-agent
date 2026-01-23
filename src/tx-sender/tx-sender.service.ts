@@ -139,10 +139,11 @@ export class TxSenderService {
         break;
 
       case TransactionResult.SENDING_ERROR:
-        tx.retries -= 1;
+        this.handleTxRetry(tx);
         this.logger.error(
           `[${tx.chainId}] Failed to send tx ${tx.type}-${tx.id}. Error ${result.error}`,
         );
+
         this.monitoring.recordFailure(
           tx.chainId,
           tx.type,
@@ -154,7 +155,7 @@ export class TxSenderService {
         break;
 
       case TransactionResult.SIMULATION_FAILED:
-        tx.retries -= 1;
+        this.handleTxRetry(tx);
         this.logger.error(
           `[${tx.chainId}] Failed to simulate tx ${tx.type}-${tx.id}`,
         );
@@ -189,6 +190,15 @@ export class TxSenderService {
       return sim.request as WriteContractParameters;
     } catch (e) {
       return null;
+    }
+  }
+
+  private handleTxRetry(tx: Transaction) {
+    tx.retries -= 1;
+    if (tx.retries > 0) {
+      this.queue.moveToEnd(tx.id);
+    } else {
+      this.queue.remove();
     }
   }
 

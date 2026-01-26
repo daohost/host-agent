@@ -272,8 +272,7 @@ export class TxMonitoringService implements OnModuleInit {
         })
         .catch(() => 0n);
 
-      console.log(balance);
-      
+      this.logger.log(`[${chain.chainId}] Balance: ${formatUnits(balance, 18)}`);
 
       this.spendingReport.balance[chain.chainId] = {
         coin: formatUnits(balance, 18),

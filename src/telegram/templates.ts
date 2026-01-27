@@ -26,7 +26,7 @@ export function daoInfoTemplate(daos: IDAOData[]): string {
     // Header
     lines.push(
       `<b>${dao.name}</b> ${dao.symbol.toUpperCase()} ` +
-      `<i>[${dao.phase}]</i> ${phaseEmoji[dao.phase] ?? '❔'}`
+        `<i>[${dao.phase}]</i> ${phaseEmoji[dao.phase] ?? '❔'}`,
     );
 
     // Activities
@@ -46,7 +46,9 @@ export function daoInfoTemplate(daos: IDAOData[]): string {
       const status = meta?.status ?? 'UNKNOWN';
       const revenueShare = meta?.revenueShare ?? 0;
 
-      lines.push(`  ${emoji}<b>${meta?.name ?? unit.unitId}</b> <i>[${status}]</i>`);
+      lines.push(
+        `  ${emoji}<b>${meta?.name ?? unit.unitId}</b> <i>[${status}]</i>`,
+      );
       lines.push(`     Revenue Share: <b>${revenueShare}%</b>`);
 
       if (meta?.ui?.length) {
@@ -70,19 +72,30 @@ export function daoInfoTemplate(daos: IDAOData[]): string {
       if (builder) {
         lines.push('<b>BUILDER</b>');
         if (builder.repo?.length) {
-          lines.push('  Repos:');
+          lines.push('  <b>Repos</b>:');
           for (const repo of builder.repo) lines.push(`   • ${repo}`);
         }
-        if (typeof builder.workers === 'number') lines.push(`  Workers: <b>${builder.workers}</b>`);
-        if (builder.pools?.length) lines.push(`  Pools: ${builder.pools.join(', ')}`);
-        if (builder.conveyors?.length) lines.push(`  Conveyors: ${builder.conveyors.join(', ')}`);
+        if (builder.workers.length > 0)
+          lines.push(` <b>Workers</b>: <b>${builder.workers.length}</b>`);
+        if (builder.pools?.length)
+          lines.push(
+            ` <b>Pools</b> Pools: ${builder.pools.map((p) => p.name).join(', ')}`,
+          );
+        if (builder.conveyors?.length)
+          lines.push(
+            ` <b>Conveyors</b>: ${builder.conveyors.map((c) => c.name).join(', ')}`,
+          );
+
         lines.push('');
       }
     }
 
     // Funding
     if (dao.funding?.length) {
-      const totalRaised = dao.funding.reduce((sum, f) => sum + (f.raised ?? 0), 0);
+      const totalRaised = dao.funding.reduce(
+        (sum, f) => sum + (f.raised ?? 0),
+        0,
+      );
       lines.push(`<i>Total Raised:</i> <b>${totalRaised} tokens</b>`);
     }
   }
@@ -93,14 +106,15 @@ export function daoInfoTemplate(daos: IDAOData[]): string {
 // ───────────── DAO TELEGRAM STATS TEMPLATE ─────────────
 export async function daoTelegramStatsTemplate(
   daos: IDAOData[],
-  getMembers: (username: string) => Promise<number>
+  getMembers: (username: string) => Promise<number>,
 ): Promise<string> {
   if (!daos?.length) return '❌ No DAOs available.';
 
   const lines: string[] = [];
 
   for (const dao of daos) {
-    const tgLinks = dao.socials?.filter((s) => s.startsWith('https://t.me')) ?? [];
+    const tgLinks =
+      dao.socials?.filter((s) => s.startsWith('https://t.me')) ?? [];
     if (!tgLinks.length) continue;
 
     lines.push(`<b>${dao.name}</b> (${dao.symbol.toUpperCase()}):`);

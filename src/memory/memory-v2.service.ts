@@ -6,6 +6,7 @@ import { GithubService } from 'src/github/github.service';
 import { OnChainDataService } from 'src/on-chain-data/on-chain-data.service';
 import { RevenueService } from 'src/revenue/revenue.service';
 import { TxMonitoringService } from 'src/tx-sender/tx-monitoring.service';
+import { getFullDaos } from 'src/utils/getDaos';
 import { now } from 'src/utils/now';
 
 @Injectable()
@@ -20,7 +21,7 @@ export class MemoryV2Service {
     private readonly onChainDataService: OnChainDataService,
     private readonly txMonitoring: TxMonitoringService,
   ) {
-    this.daos = daos;
+    this.daos = getFullDaos();
   }
 
   onApplicationBootstrap() {

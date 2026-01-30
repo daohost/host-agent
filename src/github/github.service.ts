@@ -91,6 +91,8 @@ export class GithubService implements OnModuleInit {
     this.logger.log(`Issue event: ${action} in ${repoKey}`);
 
     try {
+      // Wait a few seconds before fetching the issues
+      await sleep(3);
       const octokit = await this.getOctokit();
       const [owner, repo] = [repository.owner.login, repository.name];
 
@@ -317,16 +319,20 @@ export class GithubService implements OnModuleInit {
     const lines = issueBody.split('\n');
     let currentCategory: string | undefined;
 
-    // Regex patterns
-    const taskPattern = /^[\s-]*\[([x\s])\]\s*(.+)$/i;
-    const headerPattern = /^#{1,6}\s+(.+)$/;
+    const taskPattern = /^[\s*-]*\[([x\s])\]\s*(.+)$/i;
+    const categoryPattern = /^\*\s+([^[\n]+)$/; // Matches "* CategoryName" (without checkboxes)
 
     for (const line of lines) {
       const trimmedLine = line.trim();
 
-      const headerMatch = trimmedLine.match(headerPattern);
-      if (headerMatch) {
-        currentCategory = headerMatch[1].trim();
+      if (!trimmedLine) {
+        continue;
+      }
+
+      // Check if this is a category line (starts with * but has no checkbox)
+      const categoryMatch = trimmedLine.match(categoryPattern);
+      if (categoryMatch && !trimmedLine.includes('[')) {
+        currentCategory = categoryMatch[1].trim();
         continue;
       }
 

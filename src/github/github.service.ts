@@ -298,7 +298,7 @@ export class GithubService implements OnModuleInit {
         username: assignee.login,
       })) ?? [];
     return {
-      id: issue.id,
+      id: issue.number,
       repoId: issue.number,
       title: issue.title,
       assignee: assignees[0],

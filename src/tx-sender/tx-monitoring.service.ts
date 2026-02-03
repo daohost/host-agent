@@ -22,8 +22,6 @@ export class TxMonitoringService implements OnModuleInit {
   private readonly reportsDir = join(process.cwd(), 'temp/tx-reports');
   private readonly dailyReportsDir = join(this.reportsDir, 'daily');
 
-  private lastTxTs = 0;
-
   private chainReports: Map<string, ChainReport> = new Map();
 
   constructor(
@@ -42,6 +40,96 @@ export class TxMonitoringService implements OnModuleInit {
 
     const chains = this.chains.getChains();
     this.logger.log(`Chains: ${chains.map((c) => c.name).join(', ')}`);
+  }
+
+  @Cron(CronExpression.EVERY_HOUR)
+  logStats() {
+    const stats = this.getSummaryStats();
+
+    this.logger.log(
+      `=== Transaction Statistics ===\n` +
+        `Total Chains: ${stats.totalChains}\n` +
+        `Total Transactions: ${stats.totalTransactions}\n` +
+        `Successful: ${stats.successfulTransactions}\n` +
+        `Failed: ${stats.failedTransactions}\n` +
+        `Total Gas Spent: ${stats.totalGasSpent} ETH\n` +
+        `==============================`,
+    );
+
+    for (const chain of stats.chains) {
+      if (chain.transactions > 0) {
+        this.logger.log(
+          `[Chain ${chain.chainId}] Txs: ${chain.transactions}, Gas: ${chain.gasSpent} ETH`,
+        );
+      }
+    }
+  }
+
+  @Cron(CronExpression.EVERY_8_HOURS)
+  async generateDailySummary() {
+    const date = new Date();
+    const dateStr = date.toISOString().split('T')[0];
+
+    for (const [chainId, report] of this.chainReports.entries()) {
+      const dailyFilename = join(
+        this.dailyReportsDir,
+        `chain-${chainId}-${dateStr}.json`,
+      );
+
+      try {
+        await fs.writeFile(
+          dailyFilename,
+          JSON.stringify(report, null, 2),
+          'utf-8',
+        );
+
+        this.logger.log(
+          `[${chainId}] Daily summary saved: ${report.totalTransactions} txs, ` +
+            `${report.successfulTransactions} success, ` +
+            `${report.failedTransactions} failed, ` +
+            `Gas: ${report.totalGasSpent} ETH`,
+        );
+
+        report.transactions = [];
+        report.totalTransactions = 0;
+        report.successfulTransactions = 0;
+        report.failedTransactions = 0;
+        report.totalGasSpent = '0';
+      } catch (error) {
+        this.logger.error(
+          `Failed to save daily summary for chain ${chainId}:`,
+          error,
+        );
+      }
+    }
+  }
+
+  getSpentData(): NonNullable<IHostAgentMemory['txSender']>['spent'] {
+    const spent = {};
+    const chainIds = this.chains.getChains();
+    for (const { chainId } of chainIds) {
+      const reports = this.getAllReports();
+
+      for (const { lastUpdated, totalTransactions, totalGasSpent } of reports) {
+        const date = new Date(lastUpdated).toISOString().split('T')[0];
+        if (!spent[date])
+          spent[date] = {
+            txs: 0,
+            usd: {},
+          };
+        const usd = spent[date].usd;
+
+        const assetPrice = this.analyticsService.getNativePriceForChain(
+          chainId.toString(),
+        );
+
+        if (!usd[chainId]) usd[chainId] = 0;
+        spent[date].txs += totalTransactions;
+        spent[date].usd[chainId] += assetPrice * Number(totalGasSpent);
+      }
+    }
+
+    return spent;
   }
 
   async recordSuccess(
@@ -138,45 +226,6 @@ export class TxMonitoringService implements OnModuleInit {
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async generateDailySummary() {
-    const date = new Date();
-    const dateStr = date.toISOString().split('T')[0];
-
-    for (const [chainId, report] of this.chainReports.entries()) {
-      const dailyFilename = join(
-        this.dailyReportsDir,
-        `chain-${chainId}-${dateStr}.json`,
-      );
-
-      try {
-        await fs.writeFile(
-          dailyFilename,
-          JSON.stringify(report, null, 2),
-          'utf-8',
-        );
-
-        this.logger.log(
-          `[${chainId}] Daily summary saved: ${report.totalTransactions} txs, ` +
-            `${report.successfulTransactions} success, ` +
-            `${report.failedTransactions} failed, ` +
-            `Gas: ${report.totalGasSpent} ETH`,
-        );
-
-        report.transactions = [];
-        report.totalTransactions = 0;
-        report.successfulTransactions = 0;
-        report.failedTransactions = 0;
-        report.totalGasSpent = '0';
-      } catch (error) {
-        this.logger.error(
-          `Failed to save daily summary for chain ${chainId}:`,
-          error,
-        );
-      }
-    }
-  }
-
   getChainReport(chainId: string): ChainReport | null {
     return this.chainReports.get(chainId) || null;
   }
@@ -214,29 +263,6 @@ export class TxMonitoringService implements OnModuleInit {
     };
   }
 
-  @Cron(CronExpression.EVERY_HOUR)
-  logStats() {
-    const stats = this.getSummaryStats();
-
-    this.logger.log(
-      `=== Transaction Statistics ===\n` +
-        `Total Chains: ${stats.totalChains}\n` +
-        `Total Transactions: ${stats.totalTransactions}\n` +
-        `Successful: ${stats.successfulTransactions}\n` +
-        `Failed: ${stats.failedTransactions}\n` +
-        `Total Gas Spent: ${stats.totalGasSpent} ETH\n` +
-        `==============================`,
-    );
-
-    for (const chain of stats.chains) {
-      if (chain.transactions > 0) {
-        this.logger.log(
-          `[Chain ${chain.chainId}] Txs: ${chain.transactions}, Gas: ${chain.gasSpent} ETH`,
-        );
-      }
-    }
-  }
-
   private async ensureDirectories() {
     try {
       await fs.mkdir(this.reportsDir, { recursive: true });
@@ -255,30 +281,52 @@ export class TxMonitoringService implements OnModuleInit {
       return;
     }
 
-    this.spendingReport = {
-      account: accountAddress,
-      balance: {},
-      spent: {},
-    };
+    if (!this.spendingReport) {
+      this.spendingReport = {
+        account: accountAddress,
+        balance: {},
+        spent: {},
+      };
+    }
+
+    this.spendingReport.balance = await this.getBalances(accountAddress);
+    this.spendingReport.spent = this.getSpentData();
+  }
+
+  private async getBalances(
+    accountAddress: `0x${string}`,
+  ): Promise<NonNullable<IHostAgentMemory['txSender']>['balance']> {
     const chains = this.chains.getChains();
+    const balance = {};
     for (const chain of chains) {
       const client = this.rpcService.getPublicClient(chain.chainId.toString());
       if (!client) {
         continue;
       }
-      const balance = await client
+      const accountBalance = await client
         .getBalance({
           address: accountAddress,
         })
         .catch(() => 0n);
 
-      this.logger.log(`[${chain.chainId}] Balance: ${formatUnits(balance, 18)}`);
+      this.logger.log(
+        `[${chain.chainId}] Balance: ${formatUnits(accountBalance, 18)}`,
+      );
 
-      this.spendingReport.balance[chain.chainId] = {
-        coin: formatUnits(balance, 18),
-        usd: 0,
+      const assetPrice = this.analyticsService.getNativePriceForChain(
+        chain.chainId.toString(),
+      );
+
+      const coin = formatUnits(accountBalance, 18);
+      const usd = assetPrice * Number(coin);
+
+      balance[chain.chainId] = {
+        coin,
+        usd,
       };
     }
+
+    return balance;
   }
 
   private async updateSpendingReport(chainId: string, gasSpent: string) {
@@ -293,7 +341,9 @@ export class TxMonitoringService implements OnModuleInit {
       return;
     }
 
-    const lastReport = this.spendingReport.spent[this.lastTxTs] ?? {
+    const date = new Date().toISOString().split('T')[0];
+
+    const lastReport = this.spendingReport.spent[date] ?? {
       txs: 0,
       usd: {},
     };
@@ -310,7 +360,6 @@ export class TxMonitoringService implements OnModuleInit {
     };
 
     this.spendingReport.spent[now()] = newReport;
-    this.lastTxTs = now();
   }
 
   private async loadExistingReports() {

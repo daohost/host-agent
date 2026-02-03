@@ -25,4 +25,9 @@ export const analyticsAssets = [
     network: 'solana',
     address: '8ezh6yh2ogtrbrv25shtmlo8bpvbcqqxzdznbvzyawt2',
   },
+  {
+    symbol: 'XPL',
+    network: 'solana',
+    address: 'ffjjpammbdwbfsvvqtwhqpqcfj8nkhfeyjgxdhmvejrf',
+  },
 ];

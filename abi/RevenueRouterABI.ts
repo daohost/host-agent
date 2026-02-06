@@ -2,6 +2,11 @@ export default [
   { inputs: [], name: 'AlreadyExist', type: 'error' },
   { inputs: [], name: 'CantProcessAction', type: 'error' },
   { inputs: [], name: 'ETHTransferFailed', type: 'error' },
+  {
+    inputs: [{ internalType: 'bytes32', name: 'key', type: 'bytes32' }],
+    name: 'EnumerableMapNonexistentKey',
+    type: 'error',
+  },
   { inputs: [], name: 'IncorrectArrayLength', type: 'error' },
   {
     inputs: [
@@ -75,6 +80,19 @@ export default [
     inputs: [
       {
         indexed: false,
+        internalType: 'uint256',
+        name: 'bbRate',
+        type: 'uint256',
+      },
+    ],
+    name: 'BuyBackRate',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
         internalType: 'address',
         name: 'platform',
         type: 'address',
@@ -139,6 +157,19 @@ export default [
       },
     ],
     name: 'ProcessUnitRevenue',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: 'address[]',
+        name: 'addresses',
+        type: 'address[]',
+      },
+    ],
+    name: 'SetAddresses',
     type: 'event',
   },
   {
@@ -237,8 +268,22 @@ export default [
   },
   {
     inputs: [],
+    name: 'addresses',
+    outputs: [{ internalType: 'address[]', name: '', type: 'address[]' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
     name: 'assetsAccumulated',
     outputs: [{ internalType: 'address[]', name: '', type: 'address[]' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'buyBackRate',
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
     stateMutability: 'view',
     type: 'function',
   },
@@ -259,7 +304,7 @@ export default [
   {
     inputs: [
       { internalType: 'address', name: 'platform_', type: 'address' },
-      { internalType: 'address', name: 'xStbl_', type: 'address' },
+      { internalType: 'address', name: 'xToken_', type: 'address' },
       { internalType: 'address', name: 'feeTreasury_', type: 'address' },
     ],
     name: 'initialize',
@@ -278,6 +323,20 @@ export default [
     inputs: [],
     name: 'pendingRevenue',
     outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'address', name: 'asset', type: 'address' }],
+    name: 'pendingRevenueAsset',
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'pendingRevenueAssets',
+    outputs: [{ internalType: 'address[]', name: '', type: 'address[]' }],
     stateMutability: 'view',
     type: 'function',
   },
@@ -367,6 +426,22 @@ export default [
   },
   {
     inputs: [
+      { internalType: 'address[]', name: 'addresses_', type: 'address[]' },
+    ],
+    name: 'setAddresses',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'uint256', name: 'bbRate', type: 'uint256' }],
+    name: 'setBuyBackRate',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
       { internalType: 'address[]', name: 'assets', type: 'address[]' },
       { internalType: 'uint256[]', name: 'maxAmounts', type: 'uint256[]' },
     ],
@@ -381,13 +456,6 @@ export default [
       { internalType: 'uint256[]', name: 'minAmounts', type: 'uint256[]' },
     ],
     name: 'setMinSwapAmounts',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [{ internalType: 'uint256', name: 'newShare', type: 'uint256' }],
-    name: 'setXShare',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',

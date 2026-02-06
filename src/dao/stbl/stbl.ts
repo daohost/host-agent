@@ -236,6 +236,10 @@ export class STBlDao extends DaoService {
 
   private async getPendingRevenue(publicClient: PublicClient): Promise<bigint> {
     const chainId = publicClient.chain?.id;
+
+    if (chainId == 9745) {
+      return this.getPindingAssetsRevenue(publicClient);
+    }
     const revenueRouterAddress = chainId
       ? this.dao.deployments[chainId][ContractIndices.REVENUE_ROUTER_21]
       : undefined;
@@ -249,6 +253,38 @@ export class STBlDao extends DaoService {
         functionName: 'pendingRevenue',
       })
       .catch(() => 0n) as Promise<bigint>;
+  }
+
+  private async getPindingAssetsRevenue(publicClient: PublicClient) {
+    const chainId = publicClient.chain?.id;
+    const revenueRouterAddress = chainId
+      ? this.dao.deployments[chainId][ContractIndices.REVENUE_ROUTER_21]
+      : undefined;
+
+    if (!revenueRouterAddress) return 0n;
+
+    const assets = (await publicClient
+      .readContract({
+        abi: RevenueRouterABI as Abi,
+        address: revenueRouterAddress,
+        functionName: 'pendingRevenueAssets',
+      })
+      .catch(() => [])) as `0x${string}`[];
+
+    const pendingAssetsRevenue = await publicClient
+      .multicall({
+        contracts: assets.map((asset) => ({
+          abi: RevenueRouterABI as Abi,
+          address: revenueRouterAddress,
+          functionName: 'pendingRevenueAsset',
+          args: [asset],
+        })),
+      })
+      .then((res) =>
+        res.reduce((acc, r) => acc + ((r.result ?? 0n) as bigint), 0n),
+      );
+
+    return pendingAssetsRevenue;
   }
 
   private async getXSTBLTotalSupply(

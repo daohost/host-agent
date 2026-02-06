@@ -160,7 +160,7 @@ export class STBlDao extends DaoService {
 
     const totalRevenue = Object.values(units).reduce(
       (acc, value) =>
-        acc + value.reduce((acc, value) => acc + value.pendingRevenueUSD, 0),
+        acc + value.reduce((acc, value) => acc + value.pendingRevenueAssetAmount, 0),
       0,
     );
 

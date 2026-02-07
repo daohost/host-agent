@@ -10,7 +10,7 @@ import { TwitterService } from 'src/twitter/twitter.service';
 import { TxMonitoringService } from 'src/tx-sender/tx-monitoring.service';
 import { getFullDaos } from 'src/utils/getDaos';
 import { now } from 'src/utils/now';
-import {TokenHoldersService} from '../token-holders/token-holders.service'
+import { TokenHoldersService } from '../token-holders/token-holders.service';
 
 @Injectable()
 export class MemoryV2Service {
@@ -128,16 +128,16 @@ export class MemoryV2Service {
     const result: IHostAgentMemory['data']['daos'] = {};
     for (const dao of this.daos) {
       const tgUsers = this.telegramService.daoUsers[dao.symbol] ?? {};
-      const twitterFollowers = this.twitterService.twitterFollowers[dao.symbol] ?? {};
-      const holders = this.tokenHoldersService.getTokenHoldersForDao(dao.symbol)
+      const twitterFollowers =
+        this.twitterService.twitterFollowers[dao.symbol] ?? {};
+      const holders = this.tokenHoldersService.getDaoTokenHolder(dao.symbol);
       result[dao.symbol] = {
         oraclePrice: '0',
         coingeckoPrice: '0',
-        // @ts-ignore
         holders,
         socialUsers: {
           ...tgUsers,
-          ...twitterFollowers
+          ...twitterFollowers,
         },
         revenueChart: this.revenueService.getRevenueChart(dao.symbol),
         onChainData: this.onChainDataService.getOnChainData(dao.symbol),

@@ -1408,10 +1408,10 @@
   dependencies:
     "@sinonjs/commons" "^3.0.0"
 
-"@stabilitydao/host@^0.4.1":
-  version "0.4.1"
-  resolved "https://registry.yarnpkg.com/@stabilitydao/host/-/host-0.4.1.tgz#c7c19a6552f825da97f0a853dbe7a17cddefa182"
-  integrity sha512-ApTrACi5zZYFSelBKqenshfA6p0lywZ5kJTzambLBu5U13ohJoz2ttto7d8K26uOOLNuqUbRukZ5aogdjAqq+g==
+"@stabilitydao/host@^0.5.0":
+  version "0.5.0"
+  resolved "https://registry.yarnpkg.com/@stabilitydao/host/-/host-0.5.0.tgz#ae819533da4cf2a1adf95fc6939bb63f2f50ef64"
+  integrity sha512-qIEa9UOBsKG7DdmKVJ7nx82hnAVKaCV8KNBb+uNt3nKv7vhv9BcH6wRmMNxM9jFaxZNPo2XX+lze9wN6VG8l2w==
 
 "@stabilitydao/stability@=0.59.1":
   version "0.59.1"

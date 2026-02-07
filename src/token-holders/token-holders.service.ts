@@ -9,6 +9,7 @@ import { RpcService } from 'src/rpc/rpc.service';
 import { Abi, formatUnits, getAddress } from 'viem';
 import { TokenHolder } from './types';
 import { ConfigService } from '@nestjs/config';
+import { IDAOHolders } from '@stabilitydao/host/out/api';
 
 interface TransferLog {
   address: `0x${string}`;
@@ -63,7 +64,7 @@ export class TokenHoldersService {
     }
   }
 
-  getTokenHoldersForDao(daoKey: string): Record<string, TokenHolder[]> {
+  getTokenHoldersByChain(daoKey: string): Record<string, TokenHolder[]> {
     const holders = {};
     const dao = daos.find((dao) => dao.symbol === daoKey);
     if (!dao) return holders;
@@ -77,6 +78,21 @@ export class TokenHoldersService {
       holders[chainId] = json;
     }
     return holders;
+  }
+
+  getDaoTokenHolder(daoKey: string): IDAOHolders {
+    const holders = this.getTokenHoldersByChain(daoKey);
+
+    return Object.values(holders).reduce<IDAOHolders>((acc, holders) => {
+      for (const holder of holders) {
+        acc[holder.address] = {
+          address: holder.address as `0x${string}`,
+          balance: holder.balance,
+          percentage: holder.percentage,
+        };
+      }
+      return acc;
+    }, {});
   }
 
   private async updateTokenHoldersForDao(dao: IDAOData) {

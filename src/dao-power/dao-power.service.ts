@@ -27,7 +27,7 @@ export class DaoPowerService {
   }
 
   private async updatePowersForDao(dao: IDAOData) {
-    const holders = this.tokenHoldersService.getTokenHoldersForDao(dao.symbol);
+    const holders = this.tokenHoldersService.getTokenHoldersByChain(dao.symbol);
 
     const initialChain = this.chainService.getChainByName(dao.initialChain);
     const initialDaoToken =

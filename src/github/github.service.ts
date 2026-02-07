@@ -1,8 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { IGithubIssue } from '@stabilitydao/host/out';
-import { IGithubIssueV2 } from '@stabilitydao/host/out/activity/builder';
+import { IGithubIssueV2 } from '@stabilitydao/host/out';
 import { IDAOData } from '@stabilitydao/host/out/host';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
@@ -181,7 +180,7 @@ export class GithubService implements OnModuleInit {
     return Object.keys(this.issues);
   }
 
-  getIssues(): IGithubIssue[] {
+  getIssues() {
     return Object.values(this.issues)
       .flat()
       .map((i) => ({
@@ -199,7 +198,7 @@ export class GithubService implements OnModuleInit {
       }));
   }
 
-  getIssuesByRepo(repo: string): IGithubIssue[] {
+  getIssuesByRepo(repo: string) {
     return this.issues[repo].map((i) => ({
       ...i,
       assignees: i.assignee,

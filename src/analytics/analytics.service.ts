@@ -29,7 +29,7 @@ export class AnalyticsService implements OnModuleInit {
     }
   }
 
-  @Cron(CronExpression.EVERY_HOUR)
+  @Cron(CronExpression.EVERY_MINUTE)
   async updateAnalyticsData() {
     try {
       await this.updateAnalytics();

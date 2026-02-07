@@ -81,18 +81,35 @@ export class TokenHoldersService {
   }
 
   getDaoTokenHolder(daoKey: string): IDAOHolders {
-    const holders = this.getTokenHoldersByChain(daoKey);
+    const holdersByChain = this.getTokenHoldersByChain(daoKey);
 
-    return Object.values(holders).reduce<IDAOHolders>((acc, holders) => {
-      for (const holder of holders) {
-        acc[holder.address] = {
-          address: holder.address as `0x${string}`,
-          balance: holder.balance,
-          percentage: holder.percentage,
-        };
-      }
-      return acc;
-    }, {});
+    const holders = Object.values(holdersByChain).reduce<IDAOHolders>(
+      (acc, holders) => {
+        for (const holder of holders) {
+          if (acc[holder.address]) {
+            acc[holder.address].balance =
+              acc[holder.address].balance + holder.balance;
+            continue;
+          }
+          acc[holder.address] = {
+            address: holder.address as `0x${string}`,
+            balance: holder.balance,
+          };
+        }
+        return acc;
+      },
+      {},
+    );
+
+    const total = Object.values(holders).reduce<number>((acc, holder) => {
+      return acc + +holder.balance;
+    }, 0);
+
+    for (const holder of Object.values(holders)) {
+      holder.percentage = ((+holder.balance / total) * 100).toFixed(2);
+    }
+
+    return holders;
   }
 
   private async updateTokenHoldersForDao(dao: IDAOData) {

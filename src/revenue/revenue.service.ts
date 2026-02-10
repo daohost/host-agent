@@ -3,10 +3,12 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { daos } from '@stabilitydao/host/out/storage/daos';
 import { RevenueChart } from '@stabilitydao/stability/out/api.types';
 import { DaoFactory } from '../dao/dao-factory';
+import { RevenueChartV2 } from 'src/dao/types/xStakign';
 
 @Injectable()
 export class RevenueService implements OnModuleInit {
   public revenueCharts: { [daoSymbol: string]: RevenueChart } = {};
+  public revenueChartsV2: { [daoSymbol: string]: RevenueChartV2 } = {};
   private logger = new Logger(RevenueService.name);
   constructor(private readonly daoFactory: DaoFactory) {}
 
@@ -23,6 +25,10 @@ export class RevenueService implements OnModuleInit {
     return this.revenueCharts[daoSymbol];
   }
 
+  getRevenueChartV2(daoSymbol: string) {
+    return this.revenueChartsV2[daoSymbol];
+  }
+
   private async updateRevenueChart() {
     for (const dao of daos) {
       try {
@@ -33,7 +39,9 @@ export class RevenueService implements OnModuleInit {
         }
 
         const revenueChart = await daoService.getRevenueChart();
+        const revenueChartV2 = await daoService.getRevenueChartV2();
 
+        this.revenueChartsV2[dao.symbol] = revenueChartV2;
         this.revenueCharts[dao.symbol] = revenueChart;
       } catch (e) {
         this.logger.warn(e.message);

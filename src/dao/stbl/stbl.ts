@@ -10,7 +10,7 @@ import { SubgraphService } from '../../subgraph/subgraph.service';
 import { now } from '../../utils/now';
 import { DaoService } from '../abstract-dao';
 import { OnChainData, UnitData } from '../types/dao';
-import { XStakingNotifyRewardEntity } from '../types/xStakign';
+import { RevenueChartV2, XStakingNotifyRewardEntity } from '../types/xStakign';
 import { isLive } from '../utils';
 import { AnalyticsService } from 'src/analytics/analytics.service';
 
@@ -46,6 +46,17 @@ export class STBlDao extends DaoService {
     return this.combineRevenueCharts(charts);
   }
 
+  async getRevenueChartV2() {
+    if (!this.isLive) return {};
+    const chains = this.getChains();
+
+    const charts = await Promise.all(
+      chains.map((chainId) => this.getRevenueChartV2ForChain(chainId)),
+    );
+
+    return this.combineRevenueChartsV2(charts);
+  }
+
   async getOnchainData(): Promise<OnChainData> {
     if (!this.isLive) return {};
     const chains = this.getChains();
@@ -71,6 +82,20 @@ export class STBlDao extends DaoService {
     }, {});
   }
 
+  private combineRevenueChartsV2(charts: RevenueChartV2[]): RevenueChartV2 {
+    return charts.reduce((acc, chart) => {
+      for (const timestamp in chart) {
+        for (const token in chart[timestamp]) {
+          const currentToken = acc[token] ?? 0;
+          const combined = currentToken + +chart[timestamp][token];
+          acc[token] = combined;
+        }
+        return acc;
+      }
+      return acc;
+    }, {});
+  }
+
   private async getRevenueChartForChain(
     chainId: string,
   ): Promise<RevenueChart> {
@@ -87,6 +112,7 @@ export class STBlDao extends DaoService {
           ) {
             timestamp
             amount
+            token
           }
         }
       `,
@@ -96,6 +122,42 @@ export class STBlDao extends DaoService {
       const normalized = this.normalizeToEndPeriod(entry);
 
       acc[normalized.timestamp] = normalized.amount;
+
+      return acc;
+    }, {});
+  }
+
+  private async getRevenueChartV2ForChain(
+    chainId: string,
+  ): Promise<RevenueChartV2> {
+    const xstblToken = this.dao.deployments[chainId][ContractIndices.X_TOKEN_4];
+
+    const entries =
+      await this.subgraphProvider.querySubgraphPaginated<XStakingNotifyRewardEntity>(
+        chainId,
+        (take, skip) => `
+        {
+          xstakingNotifyRewardHistoryEntities(
+            first: ${take}
+            skip: ${skip}
+            orderBy: timestamp
+            orderDirection: desc
+          ) {
+            timestamp
+            amount
+            token
+          }
+        }
+      `,
+      );
+
+    return entries.reduce((acc, entry) => {
+      const normalized = this.normalizeToEndPeriod(entry);
+
+      acc[normalized.timestamp] = {
+        amount: normalized.amount,
+        token: entry.token ?? xstblToken,
+      };
 
       return acc;
     }, {});
@@ -160,7 +222,8 @@ export class STBlDao extends DaoService {
 
     const totalRevenue = Object.values(units).reduce(
       (acc, value) =>
-        acc + value.reduce((acc, value) => acc + value.pendingRevenueAssetAmount, 0),
+        acc +
+        value.reduce((acc, value) => acc + value.pendingRevenueAssetAmount, 0),
       0,
     );
 

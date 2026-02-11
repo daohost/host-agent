@@ -140,6 +140,8 @@ export class MemoryV2Service {
           ...twitterFollowers,
         },
         revenueChart: this.revenueService.getRevenueChart(dao.symbol),
+        // @ts-ignore
+        revenueChartV2: this.revenueService.getRevenueChartV2(dao.symbol),
         onChainData: this.onChainDataService.getOnChainData(dao.symbol),
       };
     }

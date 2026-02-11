@@ -10,7 +10,11 @@ import { SubgraphService } from '../../subgraph/subgraph.service';
 import { now } from '../../utils/now';
 import { DaoService } from '../abstract-dao';
 import { OnChainData, UnitData } from '../types/dao';
-import { XStakingNotifyRewardEntity } from '../types/xStakign';
+import {
+  Epoch,
+  RevenueChartV2,
+  XStakingNotifyRewardEntity,
+} from '../types/xStakign';
 import { isLive } from '../utils';
 import { AnalyticsService } from 'src/analytics/analytics.service';
 
@@ -46,6 +50,17 @@ export class STBlDao extends DaoService {
     return this.combineRevenueCharts(charts);
   }
 
+  async getRevenueChartV2() {
+    if (!this.isLive) return {};
+    const chains = this.getChains();
+
+    const charts = await Promise.all(
+      chains.map((chainId) => this.getRevenueChartV2ForChain(chainId)),
+    );
+
+    return this.combineRevenueChartsV2(charts);
+  }
+
   async getOnchainData(): Promise<OnChainData> {
     if (!this.isLive) return {};
     const chains = this.getChains();
@@ -69,6 +84,22 @@ export class STBlDao extends DaoService {
       }
       return acc;
     }, {});
+  }
+
+  private combineRevenueChartsV2(charts: RevenueChartV2[]): RevenueChartV2 {
+    return charts.reduce((acc, chart) => {
+      for (const timestamp in chart) {
+        if (!acc[timestamp]) {
+          acc[timestamp] = {};
+        }
+
+        for (const token in chart[timestamp]) {
+          const currentAmount = acc[timestamp][token] ?? 0;
+          acc[timestamp][token] = currentAmount + +chart[timestamp][token];
+        }
+      }
+      return acc;
+    }, {} as RevenueChartV2);
   }
 
   private async getRevenueChartForChain(
@@ -96,6 +127,58 @@ export class STBlDao extends DaoService {
       const normalized = this.normalizeToEndPeriod(entry);
 
       acc[normalized.timestamp] = normalized.amount;
+
+      return acc;
+    }, {});
+  }
+
+  private async getRevenueChartV2ForChain(
+    chainId: string,
+  ): Promise<RevenueChartV2> {
+    const xstblTokenSymbool = 'xSTBL';
+
+    const entries =
+      await this.subgraphProvider.querySubgraphPaginated<XStakingNotifyRewardEntity>(
+        chainId,
+        (take, skip) => `
+        {
+          xstakingNotifyRewardHistoryEntities(
+            first: ${take}
+            skip: ${skip}
+            orderBy: timestamp
+            orderDirection: desc
+          ) {
+            timestamp
+            amount
+            ${chainId == '9745' ? 'token' : ''}
+          }
+        }
+      `,
+      );
+
+    const tokenAddresses = new Set(
+      entries
+        .filter((entry) => entry.token)
+        .map((entry) => entry.token?.toLowerCase()),
+    );
+
+    const tokenSymbolsMap = await this.getTokenSymbolsMap(chainId, [
+      ...tokenAddresses,
+    ] as `0x${string}`[]);
+
+    return entries.reduce((acc, entry) => {
+      const normalized = this.normalizeToEndPeriod(entry);
+
+      const current = acc[normalized.timestamp] ?? {};
+
+      const symbol = entry.token?.toLowerCase()
+        ? tokenSymbolsMap.get(entry.token?.toLowerCase())
+        : xstblTokenSymbool;
+
+      acc[normalized.timestamp] = {
+        ...current,
+        [symbol ?? 'UNKNOWN']: normalized.amount,
+      };
 
       return acc;
     }, {});
@@ -160,7 +243,8 @@ export class STBlDao extends DaoService {
 
     const totalRevenue = Object.values(units).reduce(
       (acc, value) =>
-        acc + value.reduce((acc, value) => acc + value.pendingRevenueAssetAmount, 0),
+        acc +
+        value.reduce((acc, value) => acc + value.pendingRevenueAssetAmount, 0),
       0,
     );
 
@@ -168,10 +252,13 @@ export class STBlDao extends DaoService {
 
     const APR = (totalRevenue / staked) * (SECONDS_IN_YEAR / timePassed) * 100;
 
+    const revenueTokens = await this.getRevenueTokens(chainId);
+
     return {
       staked: staked,
       stakingAPR: APR,
       units,
+      revenueTokens,
     };
   }
 
@@ -370,6 +457,61 @@ export class STBlDao extends DaoService {
         functionName: 'totalSupply',
       })
       .catch(() => 0n) as Promise<bigint>;
+  }
+
+  private async getRevenueTokens(chainId: string): Promise<`0x${string}`[]> {
+    const epochs = await this.getEpochs(chainId);
+
+    const tokensSet = new Set<`0x${string}`>();
+
+    for (const epoch of epochs) {
+      for (const token of epoch.tokens) {
+        tokensSet.add(token);
+      }
+    }
+
+    return [...tokensSet];
+  }
+
+  private async getEpochs(chainId: string): Promise<Epoch[]> {
+    if (chainId != '9745') return [];
+
+    return this.subgraphProvider.querySubgraphPaginated<Epoch>(
+      chainId,
+      (take, skip) => `
+      {
+        xstakingEpoches(first: ${take}, skip: ${skip}) {
+        id
+        periodFinish
+        tokens
+        }
+      }
+      `,
+    );
+  }
+
+  private async getTokenSymbolsMap(
+    chainId: string,
+    tokenAddresses: `0x${string}`[],
+  ): Promise<Map<string, string>> {
+    const client = this.rpcProvider.getPublicClient(chainId);
+
+    if (!client) return new Map();
+
+    const symbols = await client.multicall({
+      contracts: tokenAddresses.map((tokenAddress) => ({
+        abi: erc20Abi,
+        address: tokenAddress,
+        functionName: 'symbol',
+      })),
+    });
+
+    return new Map(
+      tokenAddresses.map((tokenAddress, i) => [
+        tokenAddress,
+        (symbols[i].result ?? 'UNKNOWN') as string,
+      ]),
+    );
   }
 
   private async getLendingRevenue(publicClient: PublicClient): Promise<bigint> {

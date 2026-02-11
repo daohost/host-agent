@@ -1408,15 +1408,22 @@
   dependencies:
     "@sinonjs/commons" "^3.0.0"
 
+"@stabilitydao/host@^0.5.0":
+  version "0.5.10"
+  resolved "https://registry.yarnpkg.com/@stabilitydao/host/-/host-0.5.10.tgz#70ebc447901bf542ab4cebeb8a00ad4627d4dcf8"
+  integrity sha512-GE+t7k6g9t8JfnaQYj12qpadzUEmEQfAY0UNDbeWMwKGc0sXzL9OZRx8uxAT7Rb3wQKqTQP/0mDSVOT87/b4Pg==
+
 "@stabilitydao/host@^0.5.9":
   version "0.5.9"
   resolved "https://registry.yarnpkg.com/@stabilitydao/host/-/host-0.5.9.tgz#761fe6b7f65d440076723275b1355da3fa0b13cc"
   integrity sha512-NsJ014jxVkwop07AcIpkvD8Z7ZUtA3rRbtCSsMXHBwFBT8RAANiYE4c+PM1pQYLtZAoayrL2Ghb8PMjbHwyl8Q==
 
-"@stabilitydao/stability@=0.59.1":
-  version "0.59.1"
-  resolved "https://registry.yarnpkg.com/@stabilitydao/stability/-/stability-0.59.1.tgz#199a32dff997cfb69a8c75e1aeec6e9a58dbeea3"
-  integrity sha512-nmfMpUZBhix8ixyCxCkXpJavzg9AW/q7TuCVGyevZuMkFgu2D9BGmopfVFsoEFeldJPAWHC7Zfgjeg3EKZ+j+w==
+"@stabilitydao/stability@=0.61.2":
+  version "0.61.2"
+  resolved "https://registry.yarnpkg.com/@stabilitydao/stability/-/stability-0.61.2.tgz#a4fa4d4d27e0b4d8d6003ffe4fdceb97688cc8c5"
+  integrity sha512-fZf9U+OPJ5VmnWzX5kDpv8vhih9cGHn+TpcYDorlpJE55+Wo5TZLt0/7urlkeHKcUN5iqs2MUUf4qzVD/3Hwbw==
+  dependencies:
+    "@stabilitydao/host" "^0.5.0"
 
 "@swc/cli@^0.6.0":
   version "0.6.0"

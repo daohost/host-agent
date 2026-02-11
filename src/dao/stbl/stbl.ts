@@ -10,7 +10,11 @@ import { SubgraphService } from '../../subgraph/subgraph.service';
 import { now } from '../../utils/now';
 import { DaoService } from '../abstract-dao';
 import { OnChainData, UnitData } from '../types/dao';
-import { RevenueChartV2, XStakingNotifyRewardEntity } from '../types/xStakign';
+import {
+  Epoch,
+  RevenueChartV2,
+  XStakingNotifyRewardEntity,
+} from '../types/xStakign';
 import { isLive } from '../utils';
 import { AnalyticsService } from 'src/analytics/analytics.service';
 
@@ -85,15 +89,17 @@ export class STBlDao extends DaoService {
   private combineRevenueChartsV2(charts: RevenueChartV2[]): RevenueChartV2 {
     return charts.reduce((acc, chart) => {
       for (const timestamp in chart) {
-        for (const token in chart[timestamp]) {
-          const currentToken = acc[token] ?? 0;
-          const combined = currentToken + +chart[timestamp][token];
-          acc[token] = combined;
+        if (!acc[timestamp]) {
+          acc[timestamp] = {};
         }
-        return acc;
+
+        for (const token in chart[timestamp]) {
+          const currentAmount = acc[timestamp][token] ?? 0;
+          acc[timestamp][token] = currentAmount + +chart[timestamp][token];
+        }
       }
       return acc;
-    }, {});
+    }, {} as RevenueChartV2);
   }
 
   private async getRevenueChartForChain(
@@ -112,7 +118,6 @@ export class STBlDao extends DaoService {
           ) {
             timestamp
             amount
-            token
           }
         }
       `,
@@ -130,7 +135,7 @@ export class STBlDao extends DaoService {
   private async getRevenueChartV2ForChain(
     chainId: string,
   ): Promise<RevenueChartV2> {
-    const xstblToken = this.dao.deployments[chainId][ContractIndices.X_TOKEN_4];
+    const xstblTokenSymbool = 'xSTBL';
 
     const entries =
       await this.subgraphProvider.querySubgraphPaginated<XStakingNotifyRewardEntity>(
@@ -145,18 +150,34 @@ export class STBlDao extends DaoService {
           ) {
             timestamp
             amount
-            token
+            ${chainId == '9745' ? 'token' : ''}
           }
         }
       `,
       );
 
+    const tokenAddresses = new Set(
+      entries
+        .filter((entry) => entry.token)
+        .map((entry) => entry.token?.toLowerCase()),
+    );
+
+    const tokenSymbolsMap = await this.getTokenSymbolsMap(chainId, [
+      ...tokenAddresses,
+    ] as `0x${string}`[]);
+
     return entries.reduce((acc, entry) => {
       const normalized = this.normalizeToEndPeriod(entry);
 
+      const current = acc[normalized.timestamp] ?? {};
+
+      const symbol = entry.token?.toLowerCase()
+        ? tokenSymbolsMap.get(entry.token?.toLowerCase())
+        : xstblTokenSymbool;
+
       acc[normalized.timestamp] = {
-        amount: normalized.amount,
-        token: entry.token ?? xstblToken,
+        ...current,
+        [symbol ?? 'UNKNOWN']: normalized.amount,
       };
 
       return acc;
@@ -231,10 +252,13 @@ export class STBlDao extends DaoService {
 
     const APR = (totalRevenue / staked) * (SECONDS_IN_YEAR / timePassed) * 100;
 
+    const revenueTokens = await this.getRevenueTokens(chainId);
+
     return {
       staked: staked,
       stakingAPR: APR,
       units,
+      revenueTokens,
     };
   }
 
@@ -433,6 +457,61 @@ export class STBlDao extends DaoService {
         functionName: 'totalSupply',
       })
       .catch(() => 0n) as Promise<bigint>;
+  }
+
+  private async getRevenueTokens(chainId: string): Promise<`0x${string}`[]> {
+    const epochs = await this.getEpochs(chainId);
+
+    const tokensSet = new Set<`0x${string}`>();
+
+    for (const epoch of epochs) {
+      for (const token of epoch.tokens) {
+        tokensSet.add(token);
+      }
+    }
+
+    return [...tokensSet];
+  }
+
+  private async getEpochs(chainId: string): Promise<Epoch[]> {
+    if (chainId != '9745') return [];
+
+    return this.subgraphProvider.querySubgraphPaginated<Epoch>(
+      chainId,
+      (take, skip) => `
+      {
+        xstakingEpoches(first: ${take}, skip: ${skip}) {
+        id
+        periodFinish
+        tokens
+        }
+      }
+      `,
+    );
+  }
+
+  private async getTokenSymbolsMap(
+    chainId: string,
+    tokenAddresses: `0x${string}`[],
+  ): Promise<Map<string, string>> {
+    const client = this.rpcProvider.getPublicClient(chainId);
+
+    if (!client) return new Map();
+
+    const symbols = await client.multicall({
+      contracts: tokenAddresses.map((tokenAddress) => ({
+        abi: erc20Abi,
+        address: tokenAddress,
+        functionName: 'symbol',
+      })),
+    });
+
+    return new Map(
+      tokenAddresses.map((tokenAddress, i) => [
+        tokenAddress,
+        (symbols[i].result ?? 'UNKNOWN') as string,
+      ]),
+    );
   }
 
   private async getLendingRevenue(publicClient: PublicClient): Promise<bigint> {

@@ -141,7 +141,7 @@ export class MemoryV2Service {
         },
         revenueChart: this.revenueService.getRevenueChart(dao.symbol),
         // @ts-ignore
-        revenueChartV2: this.revenueService.getRevenueChart(dao.symbol),
+        revenueChartV2: this.revenueService.getRevenueChartV2(dao.symbol),
         onChainData: this.onChainDataService.getOnChainData(dao.symbol),
       };
     }

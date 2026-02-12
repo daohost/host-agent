@@ -25,7 +25,7 @@ export class SubgraphService {
     }
   }
 
-  getSubgraphByChainId(chainId: string) {
+  getSubgraphByChainId(chainId: string): string {
     const subgraph = this.subgraphMap.get(chainId);
     if (!subgraph) {
       throw new Error(`Subgraph not found for chainId ${chainId}`);

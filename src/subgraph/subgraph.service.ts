@@ -12,20 +12,13 @@ export class SubgraphService {
     private readonly chainsService: ChainsService,
   ) {
     for (const chainId of this.chainsService.getChainIds()) {
-      if (chainId == '9745') {
-        this.subgraphMap.set(
-          chainId,
-          'https://api.goldsky.com/api/public/project_cm2v16o5ct0ql01vr3m5o0vt2/subgraphs/stability-plasma/0.0.66/gn',
-        );
-        continue;
-      }
       if (deployments[chainId]?.subgraph) {
         this.subgraphMap.set(chainId, deployments[chainId].subgraph);
       }
     }
   }
 
-  getSubgraphByChainId(chainId: string): string {
+  getSubgraphByChainId(chainId: string) {
     const subgraph = this.subgraphMap.get(chainId);
     if (!subgraph) {
       throw new Error(`Subgraph not found for chainId ${chainId}`);

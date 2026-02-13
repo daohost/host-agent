@@ -20,6 +20,6 @@ export class GithubController {
 
   @Get('issues')
   async getIssues() {
-    return this.github.issuesByRepo;
+    return this.github.issues;
   }
 }

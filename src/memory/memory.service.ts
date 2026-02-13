@@ -80,23 +80,7 @@ export class MemoryV2Service {
   }
 
   private getBuilderMemoryV3(): IBuildersMemoryV3 {
-    const poolsMemory: IBuildersMemoryV3 = {};
-
-    for (const dao of this.daos) {
-      poolsMemory[dao.symbol] = {
-        openIssues: {},
-        repos: {},
-      };
-      const repos = this.githubService.getRepos()[dao.symbol] ?? {};
-      for (const repo of Object.keys(repos)) {
-        poolsMemory[dao.symbol].openIssues[repo] =
-          this.githubService.getIssuesByRepoV2(repo);
-      }
-
-      poolsMemory[dao.symbol].repos = repos;
-    }
-
-    return poolsMemory;
+    return this.githubService.builderMemory;
   }
 
   private getBuilderMemoryV2(): IBuildersMemoryV2 {

@@ -17,7 +17,6 @@ export class GithubService implements OnModuleInit {
   public issues: Issues = {};
   public repos: Repos = {};
 
-  public issuesByRepo: Issues = {};
   public builderMemory: IBuildersMemoryV3 = {};
 
   private app: App;
@@ -179,7 +178,7 @@ export class GithubService implements OnModuleInit {
   }
 
   getIssues() {
-    return Object.values(this.issuesByRepo)
+    return Object.values(this.issues)
       .flat()
       .map((i) => ({
         ...i,
@@ -188,7 +187,7 @@ export class GithubService implements OnModuleInit {
   }
 
   getIssuesV2(): IGithubIssueV2[] {
-    return Object.values(this.issuesByRepo)
+    return Object.values(this.issues)
       .flat()
       .map((i) => ({
         ...i,
@@ -197,14 +196,14 @@ export class GithubService implements OnModuleInit {
   }
 
   getIssuesByRepo(repo: string) {
-    return this.issuesByRepo[repo].map((i) => ({
+    return this.issues[repo].map((i) => ({
       ...i,
       assignees: i.assignee,
     }));
   }
 
   getIssuesByRepoV2(repo: string): IGithubIssueV2[] {
-    return this.issuesByRepo[repo]?.map((i) => ({
+    return this.issues[repo]?.map((i) => ({
       ...i,
       assignee: undefined,
     }));

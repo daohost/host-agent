@@ -120,8 +120,8 @@ export class GithubService implements OnModuleInit {
       }
 
       const labels = [
-        ...builder.pools.map((p) => p.label),
-        ...builder.conveyors.map((c) => c.label),
+        ...(builder.pools?.map((p) => p.label) ?? []),
+        ...(builder.conveyors?.map((c) => c.label) ?? []),
       ];
 
       const uniqueLabels = Object.values(
@@ -130,7 +130,7 @@ export class GithubService implements OnModuleInit {
 
       const octokit = await this.getOctokit();
 
-      for (const repo of builder.repo) {
+      for (const repo of builder.repo ?? []) {
         const [owner, repoName] = repo.split('/');
         this.logger.log(`🔄 Syncing labels for ${repo}...`);
 

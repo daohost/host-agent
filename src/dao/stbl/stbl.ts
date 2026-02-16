@@ -374,13 +374,11 @@ export class STBlDao extends DaoService {
 
     if (!revenueRouterAddress) return 0n;
 
-    return publicClient
-      .readContract({
-        abi: RevenueRouterABI as Abi,
-        address: revenueRouterAddress,
-        functionName: 'pendingRevenue',
-      })
-      .catch(() => 0n) as Promise<bigint>;
+    return publicClient.readContract({
+      abi: RevenueRouterABI as Abi,
+      address: revenueRouterAddress,
+      functionName: 'pendingRevenue',
+    }) as Promise<bigint>;
   }
 
   private async getPendingAssetsRevenue(publicClient: PublicClient) {
@@ -391,13 +389,11 @@ export class STBlDao extends DaoService {
 
     if (!revenueRouterAddress) return [];
 
-    const assets = (await publicClient
-      .readContract({
-        abi: RevenueRouterABI as Abi,
-        address: revenueRouterAddress,
-        functionName: 'pendingRevenueAssets',
-      })
-      .catch(() => [])) as `0x${string}`[];
+    const assets = (await publicClient.readContract({
+      abi: RevenueRouterABI as Abi,
+      address: revenueRouterAddress,
+      functionName: 'pendingRevenueAssets',
+    })) as `0x${string}`[];
 
     const pendingAssetsRevenue = (await publicClient.multicall({
       contracts: assets.map((asset) => ({
@@ -450,13 +446,11 @@ export class STBlDao extends DaoService {
     if (!xStblAddress) {
       return 0n;
     }
-    return publicClient
-      .readContract({
-        abi: XSTBLAbi as Abi,
-        address: xStblAddress,
-        functionName: 'totalSupply',
-      })
-      .catch(() => 0n) as Promise<bigint>;
+    return publicClient.readContract({
+      abi: XSTBLAbi as Abi,
+      address: xStblAddress,
+      functionName: 'totalSupply',
+    }) as Promise<bigint>;
   }
 
   private async getRevenueTokens(chainId: string): Promise<`0x${string}`[]> {

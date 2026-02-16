@@ -8,12 +8,16 @@ import * as fs from 'fs';
 import { App, Octokit } from 'octokit';
 import { getFullDaos } from 'src/utils/getDaos';
 import { sleep } from '../utils/sleep';
-import { FullIssue, Issues } from './types/issue';
+import { FullIssue, Issues, Repos } from './types/issue';
+import { IBuildersMemoryV3 } from '@stabilitydao/host/out/api';
 dotenv.config();
 
 @Injectable()
 export class GithubService implements OnModuleInit {
   public issues: Issues = {};
+  public repos: Repos = {};
+
+  public builderMemory: IBuildersMemoryV3 = {};
 
   private app: App;
   private message: string;
@@ -49,7 +53,8 @@ export class GithubService implements OnModuleInit {
     this.message = 'Good luck!';
 
     await this.resolveInstallationId();
-    await this.updateIssues().catch((e) => this.logger.error(e));
+    await this.updateBuilderMemory().catch((e) => this.logger.error(e));
+    await this.updateBuilderData().catch((e) => this.logger.error(e));
 
     const { data } = await this.app.octokit.request('/app');
     this.logger.log(
@@ -92,16 +97,8 @@ export class GithubService implements OnModuleInit {
     try {
       // Wait a few seconds before fetching the issues
       await sleep(3);
-      const octokit = await this.getOctokit();
-      const [owner, repo] = [repository.owner.login, repository.name];
 
-      const { data: issues } = await octokit.rest.issues.listForRepo({
-        owner,
-        repo,
-        per_page: 100,
-      });
-
-      this.issues[repoKey] = issues.map((i) => this.issueToDTO(i, repoKey));
+      await this.updateBuilderMemory();
     } catch (error: any) {
       this.logger.error(
         `Failed to refresh issues for ${repoKey}: ${error.response?.data?.message || error}`,
@@ -113,24 +110,17 @@ export class GithubService implements OnModuleInit {
 
   async syncLabels() {
     for (const dao of this.daos) {
-      const builder = dao.daoMetaData?.builderActivity;
-      if (!builder) {
-        this.logger.error('Builder agent not found');
-        continue;
-      }
-
-      const labels = [
-        ...(builder.pools?.map((p) => p.label) ?? []),
-        ...(builder.conveyors?.map((c) => c.label) ?? []),
-      ];
-
-      const uniqueLabels = Object.values(
-        Object.fromEntries(labels.map((l) => [l.name, l])),
-      );
+      const labels = dao.unitEmitData
+        .flatMap((u) => u.pool?.label)
+        .filter((l) => !!l);
 
       const octokit = await this.getOctokit();
 
-      for (const repo of builder.repo ?? []) {
+      const repos = dao.unitEmitData
+        .flatMap((u) => u.pool?.repos)
+        .filter((r): r is string => !!r);
+
+      for (const repo of repos) {
         const [owner, repoName] = repo.split('/');
         this.logger.log(`🔄 Syncing labels for ${repo}...`);
 
@@ -140,7 +130,7 @@ export class GithubService implements OnModuleInit {
           per_page: 100,
         });
 
-        for (const label of uniqueLabels) {
+        for (const label of labels) {
           const existingLabel = existing.find((l) => l.name === label.name);
           const color = label.color.replace('#', '');
 
@@ -177,7 +167,7 @@ export class GithubService implements OnModuleInit {
   }
 
   getRepos() {
-    return Object.keys(this.issues);
+    return this.repos;
   }
 
   getIssues() {
@@ -206,7 +196,7 @@ export class GithubService implements OnModuleInit {
   }
 
   getIssuesByRepoV2(repo: string): IGithubIssueV2[] {
-    return this.issues[repo].map((i) => ({
+    return this.issues[repo]?.map((i) => ({
       ...i,
       assignee: undefined,
     }));
@@ -249,7 +239,7 @@ export class GithubService implements OnModuleInit {
     this.fullSyncIsRunning = true;
 
     try {
-      await this.updateIssues();
+      await this.updateBuilderMemory();
       this.logger.log('Full issues update completed.');
     } catch (error) {
       this.logger.error(`Full issues update failed: ${error}`);
@@ -258,13 +248,16 @@ export class GithubService implements OnModuleInit {
     }
   }
 
-  private async updateIssues() {
+  private async updateBuilderData() {
     for (const dao of this.daos) {
-      const builder = dao?.daoMetaData?.builderActivity;
-      if (!builder) continue;
+      const repos = dao?.unitEmitData
+        ?.flatMap((u) => u.pool?.repos)
+        .filter((r): r is string => !!r);
+      if (!repos.length) continue;
 
-      const repos = builder.repo ?? [];
       const octokit = await this.getOctokit();
+
+      this.repos[dao.symbol] = {};
 
       for (const repo of repos) {
         const [owner, repoName] = repo.split('/');
@@ -282,7 +275,96 @@ export class GithubService implements OnModuleInit {
           this.logger.error(`Failed to fetch issues for ${repo}`);
         }
       }
+
+      for (const repo of repos) {
+        const [owner, repoName] = repo.split('/');
+        this.logger.log(`Fetching repo ${repo}...`);
+
+        const { data: repoData } = await octokit.rest.repos.get({
+          owner,
+          repo: repoName,
+        });
+
+        const { data: collaborators } =
+          await octokit.rest.repos.listCollaborators({
+            owner,
+            repo: repoName,
+            per_page: 100,
+          });
+
+        this.repos[dao.symbol][repo] = {
+          openIssues: this.issues[repo].length,
+          private: repoData.private,
+          access: collaborators.map((c) => ({
+            username: c.login,
+            img: c.avatar_url,
+          })),
+          stars: repoData.stargazers_count,
+        };
+      }
     }
+  }
+
+  private async updateBuilderMemory() {
+    const builderData: IBuildersMemoryV3 = {};
+    for (const dao of this.daos) {
+      builderData[dao.symbol] = {
+        openIssues: {},
+        repos: {},
+      };
+      const octokit = await this.getOctokit();
+      const units = dao.units;
+      for (const unit of units) {
+        const metadata = dao.unitEmitData?.[units.indexOf(unit)];
+        builderData[dao.symbol].openIssues[unit.unitId] = [];
+
+        const repos = metadata?.pool?.repos ?? [];
+        for (const repo of repos) {
+          const [owner, repoName] = repo.split('/');
+          this.logger.log(`Fetching issues for ${repo}...`);
+
+          try {
+            const { data: issues } = await octokit.rest.issues.listForRepo({
+              owner,
+              repo: repoName,
+              per_page: 100,
+            });
+
+            const { data: repoData } = await octokit.rest.repos.get({
+              owner,
+              repo: repoName,
+            });
+
+            const { data: collaborators } =
+              await octokit.rest.repos.listCollaborators({
+                owner,
+                repo: repoName,
+                per_page: 100,
+              });
+
+            const issuesCount = issues.length;
+
+            issues.forEach((issue) => {
+              const issueData = this.issueToDTO(issue, repo);
+              builderData[dao.symbol].openIssues[unit.unitId].push(issueData);
+            });
+
+            builderData[dao.symbol].repos[repo] = {
+              openIssues: issuesCount,
+              private: repoData.private,
+              access: collaborators.map((c) => ({
+                username: c.login,
+                img: c.avatar_url,
+              })),
+              stars: repoData.stargazers_count,
+            };
+          } catch (e) {
+            this.logger.error(`Failed to fetch issues for ${repo}`);
+          }
+        }
+      }
+    }
+    this.builderMemory = builderData;
   }
 
   private issueToDTO(
@@ -319,7 +401,7 @@ export class GithubService implements OnModuleInit {
     let currentCategory: string | undefined;
 
     const taskPattern = /^[\s*-]*\[([x\s])\]\s*(.+)$/i;
-    const categoryPattern = /^\*\s+([^[\n]+)$/; // Matches "* CategoryName" (without checkboxes)
+    const categoryPattern = /^\*\s+([^[\n]+)$/;
 
     for (const line of lines) {
       const trimmedLine = line.trim();
@@ -328,7 +410,6 @@ export class GithubService implements OnModuleInit {
         continue;
       }
 
-      // Check if this is a category line (starts with * but has no checkbox)
       const categoryMatch = trimmedLine.match(categoryPattern);
       if (categoryMatch && !trimmedLine.includes('[')) {
         currentCategory = categoryMatch[1].trim();

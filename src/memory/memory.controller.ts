@@ -1,20 +1,16 @@
 import { Controller, Get } from '@nestjs/common';
-import { MemoryService } from './memory.service';
-import { MemoryV2Service } from './memory-v2.service';
-
+import { MemoryV2Service } from './memory.service';
 @Controller()
 export class MemoryController {
-  constructor(
-    private readonly service: MemoryService,
-    private readonly serviceV2: MemoryV2Service,
-  ) {}
-  @Get('builder-memory')
-  async getBuilderMemory() {
-    return this.service.getBuilderMemory();
-  }
+  constructor(private readonly serviceV2: MemoryV2Service) {}
 
   @Get('host-agent-memory')
   async getHostAgentMemory() {
-    return this.serviceV2.getHostAgentMemory();
+    return this.serviceV2.getHostAgentV3Memory();
+  }
+
+  @Get('host-agent-memory-v3')
+  async getHostAgentV3Memory() {
+    return this.serviceV2.getHostAgentV3Memory();
   }
 }

@@ -9,7 +9,7 @@ export class MemoryController {
     return this.serviceV2.getHostAgentV3Memory();
   }
 
-  @Get('host-agent-memory')
+  @Get('host-agent-memory-v3')
   async getHostAgentV3Memory() {
     return this.serviceV2.getHostAgentV3Memory();
   }

@@ -22,7 +22,7 @@ export class GithubService implements OnModuleInit {
   private app: App;
   private message: string;
   private logger = new Logger(GithubService.name);
-  private installationId: number;
+  private installationIds: number[];
   private daos: IDAOData[];
 
   private handleIssueIsRunning = false;
@@ -114,7 +114,7 @@ export class GithubService implements OnModuleInit {
         .flatMap((u) => u.pool?.label)
         .filter((l) => !!l);
 
-      const octokit = await this.getOctokit();
+      const octokit = await this.getOctokit(dao);
 
       const repos = dao.unitEmitData
         .flatMap((u) => u.pool?.repos)
@@ -203,13 +203,6 @@ export class GithubService implements OnModuleInit {
   }
 
   private async resolveInstallationId() {
-    const envInstallationId = this.config.get<number>('INSTALLATION_ID');
-    if (envInstallationId) {
-      this.installationId = envInstallationId;
-      this.logger.log(`Using installation ID from .env: ${envInstallationId}`);
-      return;
-    }
-
     const { data: installations } =
       await this.app.octokit.rest.apps.listInstallations();
 
@@ -217,15 +210,30 @@ export class GithubService implements OnModuleInit {
       throw new Error('No installations found for GitHub App');
     }
 
-    this.installationId = installations[0].id;
-    this.logger.log(`Detected installation ID: ${this.installationId}`);
+    this.installationIds = installations.map((i) => i.id);
+    this.logger.log(`Detected installation ID: ${this.installationIds}`);
   }
 
-  private async getOctokit() {
-    if (!this.installationId) {
+  private getInstallationIndex(dao: IDAOData) {
+    switch (dao.symbol) {
+      case 'HOST':
+        return 1;
+      default:
+        return 0;
+    }
+  }
+
+  private async getOctokit(dao: IDAOData) {
+    if (!this.installationIds) {
       await this.resolveInstallationId();
     }
-    return this.app.getInstallationOctokit(this.installationId);
+    const installationIndex = this.installationIds.length
+      ? this.getInstallationIndex(dao)
+      : 0;
+
+    return this.app.getInstallationOctokit(
+      this.installationIds[installationIndex],
+    );
   }
 
   private async waitForUnlock() {
@@ -255,7 +263,7 @@ export class GithubService implements OnModuleInit {
         .filter((r): r is string => !!r);
       if (!repos.length) continue;
 
-      const octokit = await this.getOctokit();
+      const octokit = await this.getOctokit(dao);
 
       this.repos[dao.symbol] = {};
 
@@ -285,17 +293,20 @@ export class GithubService implements OnModuleInit {
           repo: repoName,
         });
 
-        // const { data: collaborators } =
-        //   await octokit.rest.repos.listCollaborators({
-        //     owner,
-        //     repo: repoName,
-        //     per_page: 100,
-        //   });
+        const { data: collaborators } =
+          await octokit.rest.repos.listCollaborators({
+            owner,
+            repo: repoName,
+            per_page: 100,
+          });
 
         this.repos[dao.symbol][repo] = {
           openIssues: this.issues[repo].length,
           private: repoData.private,
-          access: [],
+          access: collaborators.map((c) => ({
+            username: c.login,
+            img: c.avatar_url,
+          })),
           stars: repoData.stargazers_count,
         };
       }
@@ -309,7 +320,7 @@ export class GithubService implements OnModuleInit {
         openIssues: {},
         repos: {},
       };
-      const octokit = await this.getOctokit();
+      const octokit = await this.getOctokit(dao);
       const units = dao.units;
       for (const unit of units) {
         const metadata = dao.unitEmitData?.[units.indexOf(unit)];
@@ -332,12 +343,12 @@ export class GithubService implements OnModuleInit {
               repo: repoName,
             });
 
-            // const { data: collaborators } =
-            //   await octokit.rest.repos.listCollaborators({
-            //     owner,
-            //     repo: repoName,
-            //     per_page: 100,
-            //   });
+            const { data: collaborators } =
+              await octokit.rest.repos.listCollaborators({
+                owner,
+                repo: repoName,
+                per_page: 100,
+              });
 
             const issuesCount = issues.length;
 
@@ -349,7 +360,10 @@ export class GithubService implements OnModuleInit {
             builderData[dao.symbol].repos[repo] = {
               openIssues: issuesCount,
               private: repoData.private,
-              access: [],
+              access: collaborators.map((c) => ({
+                username: c.login,
+                img: c.avatar_url,
+              })),
               stars: repoData.stargazers_count,
             };
           } catch {

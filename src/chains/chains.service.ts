@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ChainStatus, IChain, chains } from '@stabilitydao/host/out/chains';
+import { ChainStatus, IChain, chains } from '@daohost/host';
 
 import * as allChains from 'viem/chains';
 import { Chain as ViemChain } from 'viem/chains';

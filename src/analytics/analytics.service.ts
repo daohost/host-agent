@@ -5,7 +5,7 @@ import { Analytics } from './types/analytics';
 import { analyticsAssets } from './config/analytics-config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ChainsService } from 'src/chains/chains.service';
-import { IHostAgentMemoryV3 } from '@stabilitydao/host';
+import { IHostAgentMemoryV3 } from '@daohost/host';
 
 @Injectable()
 export class AnalyticsService implements OnModuleInit {

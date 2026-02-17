@@ -1,4 +1,4 @@
-import { IHostAgentMemoryV3 } from '@stabilitydao/host';
+import { IHostAgentMemoryV3 } from '@daohost/host';
 import { DaoService } from '../abstract-dao';
 
 export type OnChainData =

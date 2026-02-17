@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { IDAOData, IHostAgentMemoryV3 } from '@stabilitydao/host';
+import { IDAOData, IHostAgentMemoryV3 } from '@daohost/host';
 import { AnalyticsService } from 'src/analytics/analytics.service';
 import { GithubService } from 'src/github/github.service';
 import { OnChainDataService } from 'src/on-chain-data/on-chain-data.service';
@@ -10,7 +10,7 @@ import { TxMonitoringService } from 'src/tx-sender/tx-monitoring.service';
 import { getFullDaos } from 'src/utils/getDaos';
 import { now } from 'src/utils/now';
 import { TokenHoldersService } from '../token-holders/token-holders.service';
-import { IBuildersMemoryV3 } from '@stabilitydao/host/out/api';
+import { IBuildersMemoryV3 } from '@daohost/host/out/api';
 
 @Injectable()
 export class MemoryV2Service {

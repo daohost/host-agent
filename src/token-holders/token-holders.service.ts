@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { daos, IDAOData } from '@stabilitydao/host';
-import { ContractIndices } from '@stabilitydao/host/out/host';
+import { daos, IDAOData } from '@daohost/host';
+import { ContractIndices } from '@daohost/host/out/host';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -9,7 +9,7 @@ import { RpcService } from 'src/rpc/rpc.service';
 import { Abi, formatUnits, getAddress } from 'viem';
 import { TokenHolder } from './types';
 import { ConfigService } from '@nestjs/config';
-import { IDAOHolders } from '@stabilitydao/host/out/api';
+import { IDAOHolders } from '@daohost/host/out/api';
 
 interface TransferLog {
   address: `0x${string}`;

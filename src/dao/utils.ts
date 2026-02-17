@@ -1,4 +1,4 @@
-import { IDAOData, LifecyclePhase } from '@stabilitydao/host/out/host';
+import { IDAOData, LifecyclePhase } from '@daohost/host';
 
 export function isLive(dao: IDAOData): boolean {
   return [

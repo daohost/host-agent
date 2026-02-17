@@ -4,7 +4,7 @@ import { DaoService } from './abstract-dao';
 import { STBlDao } from './stbl/stbl';
 import { RpcService } from '../rpc/rpc.service';
 import { isLive } from './utils';
-import { IDAOData } from '@stabilitydao/host/out/host';
+import { IDAOData } from '@daohost/host';
 import { AnalyticsService } from 'src/analytics/analytics.service';
 
 @Injectable()

@@ -1,5 +1,5 @@
-import { IDAOData } from '@stabilitydao/host';
-import { activities } from '@stabilitydao/host/out/activity';
+import { IDAOData } from '@daohost/host';
+import { activities } from '@daohost/host';
 
 // ───────────── PHASE EMOJIS ─────────────
 export const phaseEmoji: Record<string, string> = {

@@ -1,15 +1,15 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { IGithubIssueV2 } from '@stabilitydao/host/out';
-import { IDAOData } from '@stabilitydao/host/out/host';
+import { IGithubIssueV2 } from '@daohost/host';
+import { IDAOData } from '@daohost/host';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import { App, Octokit } from 'octokit';
 import { getFullDaos } from 'src/utils/getDaos';
 import { sleep } from '../utils/sleep';
 import { FullIssue, Issues, Repos } from './types/issue';
-import { IBuildersMemoryV3 } from '@stabilitydao/host/out/api';
+import { IBuildersMemoryV3 } from '@daohost/host/out/api';
 dotenv.config();
 
 @Injectable()
@@ -271,7 +271,7 @@ export class GithubService implements OnModuleInit {
           });
 
           this.issues[repo] = issues.map((i) => this.issueToDTO(i, repo));
-        } catch (e) {
+        } catch {
           this.logger.error(`Failed to fetch issues for ${repo}`);
         }
       }
@@ -285,20 +285,17 @@ export class GithubService implements OnModuleInit {
           repo: repoName,
         });
 
-        const { data: collaborators } =
-          await octokit.rest.repos.listCollaborators({
-            owner,
-            repo: repoName,
-            per_page: 100,
-          });
+        // const { data: collaborators } =
+        //   await octokit.rest.repos.listCollaborators({
+        //     owner,
+        //     repo: repoName,
+        //     per_page: 100,
+        //   });
 
         this.repos[dao.symbol][repo] = {
           openIssues: this.issues[repo].length,
           private: repoData.private,
-          access: collaborators.map((c) => ({
-            username: c.login,
-            img: c.avatar_url,
-          })),
+          access: [],
           stars: repoData.stargazers_count,
         };
       }
@@ -335,12 +332,12 @@ export class GithubService implements OnModuleInit {
               repo: repoName,
             });
 
-            const { data: collaborators } =
-              await octokit.rest.repos.listCollaborators({
-                owner,
-                repo: repoName,
-                per_page: 100,
-              });
+            // const { data: collaborators } =
+            //   await octokit.rest.repos.listCollaborators({
+            //     owner,
+            //     repo: repoName,
+            //     per_page: 100,
+            //   });
 
             const issuesCount = issues.length;
 
@@ -352,13 +349,10 @@ export class GithubService implements OnModuleInit {
             builderData[dao.symbol].repos[repo] = {
               openIssues: issuesCount,
               private: repoData.private,
-              access: collaborators.map((c) => ({
-                username: c.login,
-                img: c.avatar_url,
-              })),
+              access: [],
               stars: repoData.stargazers_count,
             };
-          } catch (e) {
+          } catch {
             this.logger.error(`Failed to fetch issues for ${repo}`);
           }
         }

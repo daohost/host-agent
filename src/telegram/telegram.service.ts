@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { IDAOData } from '@stabilitydao/host';
+import { IDAOData } from '@daohost/host';
 import { InjectBot } from 'nestjs-telegraf';
 import { getFullDaos } from 'src/utils/getDaos';
 import { Telegraf } from 'telegraf';

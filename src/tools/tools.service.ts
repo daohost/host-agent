@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { IDAOData } from '@stabilitydao/host';
+import { IDAOData } from '@daohost/host';
 import { createCanvas, loadImage } from 'canvas';
 import * as fs from 'fs';
 import * as path from 'path';

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { daos } from '@stabilitydao/host';
-import { ContractIndices, IDAOData } from '@stabilitydao/host/out/host';
+import { daos } from '@daohost/host';
+import { ContractIndices, IDAOData } from '@daohost/host/out/host';
 import RevenueRouterABI from 'abi/RevenueRouterABI';
 import { TxSenderService } from 'src/tx-sender/tx-sender.service';
 import { TransactionType } from 'src/tx-sender/tx-sender.types';

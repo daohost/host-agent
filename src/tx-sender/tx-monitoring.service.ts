@@ -9,7 +9,7 @@ import {
 } from './tx-sender.types';
 import { RpcService } from 'src/rpc/rpc.service';
 import { ChainsService } from 'src/chains/chains.service';
-import { IHostAgentMemoryV3 } from '@stabilitydao/host';
+import { IHostAgentMemoryV3 } from '@daohost/host';
 import { formatUnits } from 'viem';
 import { AnalyticsService } from 'src/analytics/analytics.service';
 

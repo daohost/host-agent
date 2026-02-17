@@ -1,8 +1,8 @@
 import { RpcService } from '../rpc/rpc.service';
 import { SubgraphService } from '../subgraph/subgraph.service';
 import { OnChainData } from './types/dao';
-import { IDAOData } from '@stabilitydao/host/out/host';
-import { RevenueChart } from '@stabilitydao/host/out/api';
+import { IDAOData } from '@daohost/host';
+import { RevenueChart } from '@daohost/host';
 import { AnalyticsService } from 'src/analytics/analytics.service';
 import { RevenueChartV2 } from './types/xStakign';
 

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { IDAOData } from '@stabilitydao/host';
+import { IDAOData } from '@daohost/host';
 import { getFullDaos } from 'src/utils/getDaos';
 import { TwitterApiProvider } from './providers/provider';
 import { TwitterApi } from './providers/twitterapi/provider';

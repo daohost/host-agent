@@ -5,6 +5,7 @@ export const config = () => ({
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
   txSenderEnabled: process.env.TX_SENDER_ENABLED === 'true',
   twitterApiKey: process.env.TWITTERAPI_API_KEY,
+  artifactsAccessCode: process.env.ARTIFACTS_ACCESS_CODE,
 });
 
 export const Commands = {

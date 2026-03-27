@@ -18,6 +18,7 @@ import { config } from './config/config';
 import { TxSenderModule } from './tx-sender/tx-sender.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { TwitterModule } from './twitter/twitter.module';
+import { ArtifactsModule } from './artifacts/artifacts.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { TwitterModule } from './twitter/twitter.module';
     DaoPowerModule,
     TelegramModule,
     TwitterModule,
+    ArtifactsModule,
   ],
   controllers: [],
   providers: [],

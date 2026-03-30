@@ -50,6 +50,8 @@ lerna-debug.log*
 .tmp
 /temp
 /tx-reports
+/artifacts
+/flights
 
 # Runtime data
 pids

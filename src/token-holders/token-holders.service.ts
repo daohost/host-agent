@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { daos, IDAOData } from '@daohost/host';
-import { ContractIndices } from '@daohost/host/out/host';
+import { ContractIndices } from '@daohost/host/out/host.types';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';

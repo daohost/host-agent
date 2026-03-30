@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { daos, IDAOData } from '@daohost/host';
-import { ContractIndices } from '@daohost/host/out/host';
+import { ContractIndices } from '@daohost/host/out/host.types';
 import IDAO from 'abi/IDAO';
 import { ChainsService } from 'src/chains/chains.service';
 import { RpcService } from 'src/rpc/rpc.service';

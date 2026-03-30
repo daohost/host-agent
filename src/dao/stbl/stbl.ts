@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { RevenueChart } from '@daohost/host/out/api';
-import { ContractIndices, IDAOData } from '@daohost/host/out/host';
+import { ContractIndices } from '@daohost/host/out/host.types';
+import { IDAOData } from '@daohost/host';
 import { Abi, erc20Abi, PublicClient } from 'viem';
 import { formatUnits } from 'viem/utils';
 import RevenueRouterABI from '../../../abi/RevenueRouterABI';

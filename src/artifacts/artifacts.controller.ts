@@ -16,11 +16,11 @@ import { ArtifactsAccessGuard } from './artifacts.guard';
 import { IMevArtifact } from '@daohost/host/out/daos/mevbots';
 
 @Controller('artifacts')
-@UseGuards(ArtifactsAccessGuard)
 export class ArtifactsController {
   constructor(private readonly artifactsService: ArtifactsService) {}
 
   @Post()
+  @UseGuards(ArtifactsAccessGuard)
   @HttpCode(201)
   create(@Body() artifact: IMevArtifact) {
     try {
@@ -48,6 +48,7 @@ export class ArtifactsController {
   }
 
   @Put(':id')
+  @UseGuards(ArtifactsAccessGuard)
   update(@Param('id') id: string, @Body() updates: Partial<IMevArtifact>) {
     try {
       return this.artifactsService.update(id, updates);
@@ -60,6 +61,7 @@ export class ArtifactsController {
   }
 
   @Delete(':id')
+  @UseGuards(ArtifactsAccessGuard)
   @HttpCode(204)
   remove(@Param('id') id: string) {
     const deleted = this.artifactsService.delete(id);

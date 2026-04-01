@@ -38,7 +38,7 @@ import { ArtifactsModule } from './artifacts/artifacts.module';
     TxSenderModule,
     TokenHoldersModule,
     DaoPowerModule,
-    TelegramModule,
+    TelegramModule.forRoot(),
     TwitterModule,
     ArtifactsModule,
   ],

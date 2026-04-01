@@ -21,8 +21,14 @@ export class DexscreenerService {
       );
     }
 
-    const { priceUsd, priceChange } = response.data.pair;
+    const pair = response.data.pair ?? response.data.pairs?.[0];
 
-    return { priceUsd, priceChange: priceChange?.h24 };
+    if (!pair) {
+      throw new Error(
+        `Pair not found on Dexscreener for ${network}/${address}`,
+      );
+    }
+
+    return { priceUsd: pair.priceUsd, priceChange: pair.priceChange?.h24 };
   }
 }

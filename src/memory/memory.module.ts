@@ -17,7 +17,7 @@ import { TokenHoldersModule } from 'src/token-holders/token-holders.module';
     OnChainDataModule,
     AnalyticsModule,
     TxSenderModule,
-    TelegramModule,
+    TelegramModule.forRoot(),
     TwitterModule,
     TokenHoldersModule,
   ],

@@ -227,9 +227,10 @@ export class GithubService implements OnModuleInit {
     if (!this.installationIds) {
       await this.resolveInstallationId();
     }
-    const installationIndex = this.installationIds.length
-      ? this.getInstallationIndex(dao)
-      : 0;
+    const installationIndex = Math.min(
+      this.getInstallationIndex(dao),
+      this.installationIds.length - 1,
+    );
 
     return this.app.getInstallationOctokit(
       this.installationIds[installationIndex],
@@ -280,9 +281,9 @@ export class GithubService implements OnModuleInit {
 
           this.issues[repo] = issues.map((i) => this.issueToDTO(i, repo));
         } catch (e) {
-          console.log(e);
-
-          this.logger.error(`Failed to fetch issues for ${repo}`);
+          this.logger.error(
+            `Failed to fetch issues for ${repo}: ${e?.status || e?.message || e}`,
+          );
         }
       }
 
@@ -290,27 +291,33 @@ export class GithubService implements OnModuleInit {
         const [owner, repoName] = repo.split('/');
         this.logger.log(`Fetching repo ${repo}...`);
 
-        const { data: repoData } = await octokit.rest.repos.get({
-          owner,
-          repo: repoName,
-        });
-
-        const { data: collaborators } =
-          await octokit.rest.repos.listCollaborators({
+        try {
+          const { data: repoData } = await octokit.rest.repos.get({
             owner,
             repo: repoName,
-            per_page: 100,
           });
 
-        this.repos[dao.symbol][repo] = {
-          openIssues: this.issues[repo].length,
-          private: repoData.private,
-          access: collaborators.map((c) => ({
-            username: c.login,
-            img: c.avatar_url,
-          })),
-          stars: repoData.stargazers_count,
-        };
+          const { data: collaborators } =
+            await octokit.rest.repos.listCollaborators({
+              owner,
+              repo: repoName,
+              per_page: 100,
+            });
+
+          this.repos[dao.symbol][repo] = {
+            openIssues: this.issues[repo]?.length ?? 0,
+            private: repoData.private,
+            access: collaborators.map((c) => ({
+              username: c.login,
+              img: c.avatar_url,
+            })),
+            stars: repoData.stargazers_count,
+          };
+        } catch (e) {
+          this.logger.error(
+            `Failed to fetch repo data for ${repo}: ${e?.status || e?.message || e}`,
+          );
+        }
       }
     }
   }
@@ -369,9 +376,9 @@ export class GithubService implements OnModuleInit {
               stars: repoData.stargazers_count,
             };
           } catch (e) {
-            console.log(e);
-
-            this.logger.error(`Failed to fetch issues for ${repo}`);
+            this.logger.error(
+              `Failed to fetch issues for ${repo}: ${e?.status || e?.message || e}`,
+            );
           }
         }
       }

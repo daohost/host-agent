@@ -52,7 +52,7 @@ export class AnalyticsService implements OnModuleInit {
   }
 
   getPriceBySymbol(symbol: string): number {
-    return +(this.analytics.prices[symbol].priceUsd ?? 0);
+    return +(this.analytics.prices[symbol]?.priceUsd ?? 0);
   }
 
   getxStblPrice(): number {
@@ -66,10 +66,9 @@ export class AnalyticsService implements OnModuleInit {
     if (!symbol) {
       return 0;
     }
-    const prices = this.analytics.prices[symbol];
 
     const price = this.analytics.prices[symbol];
-    if (!prices) {
+    if (!price) {
       return 0;
     }
     return +price.priceUsd;

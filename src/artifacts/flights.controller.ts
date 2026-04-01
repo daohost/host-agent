@@ -14,11 +14,11 @@ import { ArtifactsAccessGuard } from './artifacts.guard';
 import { IFlight } from '@daohost/host/out/daos/mevbots';
 
 @Controller('flights')
-@UseGuards(ArtifactsAccessGuard)
 export class FlightsController {
   constructor(private readonly flightsService: FlightsService) {}
 
   @Post()
+  @UseGuards(ArtifactsAccessGuard)
   @HttpCode(200)
   upsert(@Body() flight: IFlight) {
     return this.flightsService.upsert(flight);
@@ -39,6 +39,7 @@ export class FlightsController {
   }
 
   @Delete(':id')
+  @UseGuards(ArtifactsAccessGuard)
   @HttpCode(204)
   remove(@Param('id') id: string) {
     const deleted = this.flightsService.delete(id);

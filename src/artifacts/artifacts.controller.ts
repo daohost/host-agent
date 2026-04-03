@@ -8,16 +8,21 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UseGuards,
   ConflictException,
 } from '@nestjs/common';
 import { ArtifactsService } from './artifacts.service';
+import { FlightsService } from './flights.service';
 import { ArtifactsAccessGuard } from './artifacts.guard';
 import { IMevArtifact } from '@daohost/host/out/daos/mevbots';
 
 @Controller('artifacts')
 export class ArtifactsController {
-  constructor(private readonly artifactsService: ArtifactsService) {}
+  constructor(
+    private readonly artifactsService: ArtifactsService,
+    private readonly flightsService: FlightsService,
+  ) {}
 
   @Post()
   @UseGuards(ArtifactsAccessGuard)
@@ -33,9 +38,36 @@ export class ArtifactsController {
     }
   }
 
+  @Get('by-flight/:flightId')
+  findByFlight(@Param('flightId') flightId: string) {
+    const flight = this.flightsService.findById(flightId);
+    if (!flight) {
+      throw new NotFoundException(`Flight ${flightId} not found`);
+    }
+    return this.artifactsService.findByIds(flight.made ?? []);
+  }
+
   @Get()
-  findAll() {
-    return this.artifactsService.findAll();
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const all = this.artifactsService.findAll();
+
+    if (!page && !limit) {
+      return { data: all, total: all.length };
+    }
+
+    const p = Math.max(1, parseInt(page ?? '1'));
+    const l = Math.min(100, Math.max(1, parseInt(limit ?? '20')));
+    const start = (p - 1) * l;
+
+    return {
+      data: all.slice(start, start + l),
+      total: all.length,
+      page: p,
+      limit: l,
+    };
   }
 
   @Get(':id')

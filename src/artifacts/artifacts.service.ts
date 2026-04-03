@@ -47,6 +47,12 @@ export class ArtifactsService implements OnModuleInit {
     return JSON.parse(content) as IMevArtifact;
   }
 
+  findByIds(ids: string[]): IMevArtifact[] {
+    return ids
+      .map((id) => this.findById(id))
+      .filter((a): a is IMevArtifact => a !== null);
+  }
+
   findAll(): IMevArtifact[] {
     if (!fs.existsSync(this.storagePath)) {
       return [];

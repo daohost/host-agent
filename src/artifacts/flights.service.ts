@@ -41,6 +41,10 @@ export class FlightsService implements OnModuleInit {
     return JSON.parse(content) as IFlight;
   }
 
+  findSuccessful(): IFlight[] {
+    return this.findAll().filter((f) => f.made?.length > 0);
+  }
+
   findAll(): IFlight[] {
     if (!fs.existsSync(this.storagePath)) {
       return [];

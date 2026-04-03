@@ -24,6 +24,11 @@ export class FlightsController {
     return this.flightsService.upsert(flight);
   }
 
+  @Get('successful')
+  findSuccessful() {
+    return this.flightsService.findSuccessful();
+  }
+
   @Get()
   findAll() {
     return this.flightsService.findAll();

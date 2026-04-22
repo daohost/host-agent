@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { FlightsService } from './flights.service';
 import { ArtifactsAccessGuard } from './artifacts.guard';
-import { IFlight } from '@daohost/host/out/daos/mevbots';
+import { IFlight } from '@daohost/host';
 
 @Controller('flights')
 export class FlightsController {
@@ -27,6 +27,11 @@ export class FlightsController {
   @Get('successful')
   findSuccessful() {
     return this.flightsService.findSuccessful();
+  }
+
+  @Get('active')
+  findActive() {
+    return this.flightsService.findActive();
   }
 
   @Get()

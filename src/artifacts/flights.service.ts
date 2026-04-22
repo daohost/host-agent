@@ -1,14 +1,15 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import { IFlight } from '@daohost/host/out/daos/mevbots';
+import { IFlight } from '@daohost/host/out/bot';
+import { FlightsGateway } from './flights.gateway';
 
 @Injectable()
 export class FlightsService implements OnModuleInit {
   private readonly logger = new Logger(FlightsService.name);
   private readonly storagePath: string;
 
-  constructor() {
+  constructor(private readonly flightsGateway: FlightsGateway) {
     this.storagePath = path.resolve(process.cwd(), 'flights');
   }
 
@@ -28,6 +29,7 @@ export class FlightsService implements OnModuleInit {
     const filePath = this.getFilePath(flight.id);
     fs.writeFileSync(filePath, JSON.stringify(flight, null, 2), 'utf-8');
     this.logger.log(`Saved flight: ${flight.id}`);
+    this.flightsGateway.broadcastFlightUpdated(flight);
     return flight;
   }
 
@@ -43,6 +45,10 @@ export class FlightsService implements OnModuleInit {
 
   findSuccessful(): IFlight[] {
     return this.findAll().filter((f) => f.made?.length > 0);
+  }
+
+  findActive(): IFlight[] {
+    return this.findAll().filter((f) => f.complete == null);
   }
 
   findAll(): IFlight[] {
@@ -70,6 +76,7 @@ export class FlightsService implements OnModuleInit {
 
     fs.unlinkSync(filePath);
     this.logger.log(`Deleted flight: ${id}`);
+    this.flightsGateway.broadcastFlightDeleted(id);
     return true;
   }
 }

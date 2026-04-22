@@ -22,13 +22,15 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
-    "@daohost/host": "^0.10.2",
+    "@daohost/host": "^0.12.0",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/platform-socket.io": "^11.1.19",
     "@nestjs/schedule": "^6.0.1",
+    "@nestjs/websockets": "^11.1.19",
     "@stabilitydao/stability": "=0.61.2",
     "axios": "^1.13.2",
     "dotenv": "^17.2.3",
@@ -38,6 +40,7 @@
     "octokit": "^5.0.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "socket.io": "^4.8.3",
     "telegraf": "^4.16.3",
     "uuid": "^13.0.0",
     "viem": "^2.41.2"

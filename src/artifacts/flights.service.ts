@@ -1,4 +1,10 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  OnModuleInit,
+  forwardRef,
+} from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { IFlight } from '@daohost/host/out/bot';
@@ -9,7 +15,10 @@ export class FlightsService implements OnModuleInit {
   private readonly logger = new Logger(FlightsService.name);
   private readonly storagePath: string;
 
-  constructor(private readonly flightsGateway: FlightsGateway) {
+  constructor(
+    @Inject(forwardRef(() => FlightsGateway))
+    private readonly flightsGateway: FlightsGateway,
+  ) {
     this.storagePath = path.resolve(process.cwd(), 'flights');
   }
 

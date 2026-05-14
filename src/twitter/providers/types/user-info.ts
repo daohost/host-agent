@@ -8,6 +8,6 @@ export type UserInfo = {
 
 export type GetUserInfoResponse<T> = {
   data: T;
-  status: "success" | "error";
+  status: 'success' | 'error';
   msg: string;
 };

@@ -26,13 +26,19 @@ export class FlightsController {
   }
 
   @Get('successful')
-  findSuccessful() {
-    return this.flightsService.findSuccessful();
+  findSuccessful(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.paginate(this.flightsService.findSuccessful(), page, limit);
   }
 
   @Get('active')
-  findActive() {
-    return this.flightsService.findActive();
+  findActive(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.paginate(this.flightsService.findActive(), page, limit);
   }
 
   @Get()
@@ -40,8 +46,10 @@ export class FlightsController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    const all = this.flightsService.findAll();
+    return this.paginate(this.flightsService.findAll(), page, limit);
+  }
 
+  private paginate(all: IFlight[], page?: string, limit?: string) {
     if (!page && !limit) {
       return { data: all, total: all.length };
     }

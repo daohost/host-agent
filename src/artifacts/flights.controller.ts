@@ -7,6 +7,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { FlightsService } from './flights.service';
@@ -35,8 +36,26 @@ export class FlightsController {
   }
 
   @Get()
-  findAll() {
-    return this.flightsService.findAll();
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const all = this.flightsService.findAll();
+
+    if (!page && !limit) {
+      return { data: all, total: all.length };
+    }
+
+    const p = Math.max(1, parseInt(page ?? '1'));
+    const l = Math.min(100, Math.max(1, parseInt(limit ?? '20')));
+    const start = (p - 1) * l;
+
+    return {
+      data: all.slice(start, start + l),
+      total: all.length,
+      page: p,
+      limit: l,
+    };
   }
 
   @Get(':id')

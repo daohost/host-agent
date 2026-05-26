@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import { IFlight } from '@daohost/host/out/bot';
+import { IFlight } from '@daohost/host';
 import { FlightsGateway } from './flights.gateway';
 
 @Injectable()

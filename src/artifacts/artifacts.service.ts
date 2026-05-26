@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import { IMevArtifact } from '@daohost/host/out/daos/mevbots';
+import { IMevArtifact } from '@daohost/host';
 
 @Injectable()
 export class ArtifactsService implements OnModuleInit {

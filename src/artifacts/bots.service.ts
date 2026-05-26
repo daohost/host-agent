@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import { IBot } from '@daohost/host/out/bot';
+import { IBot } from '@daohost/host';
 
 @Injectable()
 export class BotsService implements OnModuleInit {

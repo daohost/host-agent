@@ -5,7 +5,7 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { IFlight } from '@daohost/host/out/bot';
+import { IFlight } from '@daohost/host';
 import { FlightsService } from './flights.service';
 import { BotsService } from './bots.service';
 

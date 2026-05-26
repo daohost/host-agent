@@ -48,10 +48,7 @@ export class ArtifactsController {
   }
 
   @Get()
-  findAll(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
+  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
     const all = this.artifactsService.findAll();
 
     if (!page && !limit) {

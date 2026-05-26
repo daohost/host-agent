@@ -26,26 +26,17 @@ export class FlightsController {
   }
 
   @Get('successful')
-  findSuccessful(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
+  findSuccessful(@Query('page') page?: string, @Query('limit') limit?: string) {
     return this.paginate(this.flightsService.findSuccessful(), page, limit);
   }
 
   @Get('active')
-  findActive(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
+  findActive(@Query('page') page?: string, @Query('limit') limit?: string) {
     return this.paginate(this.flightsService.findActive(), page, limit);
   }
 
   @Get()
-  findAll(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
+  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
     return this.paginate(this.flightsService.findAll(), page, limit);
   }
 

@@ -56,16 +56,12 @@ export class ArtifactsService implements OnModuleInit {
       return [];
     }
 
-    const files = fs
-      .readdirSync(this.storagePath)
-      .filter((f) => f.endsWith('.json'));
-    return files.map((file) => {
-      const content = fs.readFileSync(
-        path.join(this.storagePath, file),
-        'utf-8',
-      );
+    const files = fs.readdirSync(this.storagePath).filter((f) => f.endsWith('.json'));
+    const artifacts = files.map((file) => {
+      const content = fs.readFileSync(path.join(this.storagePath, file), 'utf-8');
       return JSON.parse(content) as IMevArtifact;
     });
+    return artifacts.sort((a, b) => (b.created ?? 0) - (a.created ?? 0));
   }
 
   update(id: string, updates: Partial<IMevArtifact>): IMevArtifact {

@@ -68,13 +68,14 @@ export class FlightsService implements OnModuleInit {
     const files = fs
       .readdirSync(this.storagePath)
       .filter((f) => f.endsWith('.json'));
-    return files.map((file) => {
+    const flights = files.map((file) => {
       const content = fs.readFileSync(
         path.join(this.storagePath, file),
         'utf-8',
       );
       return JSON.parse(content) as IFlight;
     });
+    return flights.sort((a, b) => (b.created ?? 0) - (a.created ?? 0));
   }
 
   delete(id: string): boolean {

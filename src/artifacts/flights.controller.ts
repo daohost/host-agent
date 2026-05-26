@@ -7,6 +7,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { FlightsService } from './flights.service';
@@ -25,18 +26,44 @@ export class FlightsController {
   }
 
   @Get('successful')
-  findSuccessful() {
-    return this.flightsService.findSuccessful();
+  findSuccessful(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.paginate(this.flightsService.findSuccessful(), page, limit);
   }
 
   @Get('active')
-  findActive() {
-    return this.flightsService.findActive();
+  findActive(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.paginate(this.flightsService.findActive(), page, limit);
   }
 
   @Get()
-  findAll() {
-    return this.flightsService.findAll();
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.paginate(this.flightsService.findAll(), page, limit);
+  }
+
+  private paginate(all: IFlight[], page?: string, limit?: string) {
+    if (!page && !limit) {
+      return { data: all, total: all.length };
+    }
+
+    const p = Math.max(1, parseInt(page ?? '1'));
+    const l = Math.min(100, Math.max(1, parseInt(limit ?? '20')));
+    const start = (p - 1) * l;
+
+    return {
+      data: all.slice(start, start + l),
+      total: all.length,
+      page: p,
+      limit: l,
+    };
   }
 
   @Get(':id')

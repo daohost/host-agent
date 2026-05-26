@@ -75,6 +75,11 @@ export class FlightsService implements OnModuleInit {
       );
       return JSON.parse(content) as IFlight;
     });
+    // here we decreasing reply size
+    for (let i = 0; i < flights.length; i++) {
+      flights[i].value = [];
+      flights[i].workflows = [];
+    }
     return flights.sort((a, b) => (b.created ?? 0) - (a.created ?? 0));
   }
 

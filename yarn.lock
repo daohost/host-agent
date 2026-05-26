@@ -350,10 +350,10 @@
   dependencies:
     "@jridgewell/trace-mapping" "0.3.9"
 
-"@daohost/host@^0.12.0":
-  version "0.12.0"
-  resolved "https://registry.yarnpkg.com/@daohost/host/-/host-0.12.0.tgz#13d00cfc69f559702c7c4966d163e49ab673d7d2"
-  integrity sha512-E9EAml85NApR1O1YFRLbu23FTViOchYlQjMONHhS9Rg3Bb55d1HMENjHpFEKD68/AmYoVpWHphVnvYk/Cx+Gjg==
+"@daohost/host@^0.17.2":
+  version "0.17.2"
+  resolved "https://registry.yarnpkg.com/@daohost/host/-/host-0.17.2.tgz#13cc8f433cec3b7bf62fdd32d2812a0ddb17f2f7"
+  integrity sha512-+wyBrtoKbIDObUEIybPpUClJHDKlQlVmz/dQ1NJUj1P4+U/LKEOV7ZlejnyBW+esArd4uPBYgLF8DTugv2i5rQ==
 
 "@eslint-community/eslint-utils@^4.7.0", "@eslint-community/eslint-utils@^4.8.0":
   version "4.9.0"

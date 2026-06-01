@@ -1,9 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import {
-  IMevArtifact,
-} from '@daohost/host/out/daos/mevbots';
+import { IMevArtifact } from '@daohost/host';
 
 @Injectable()
 export class ArtifactsService implements OnModuleInit {
@@ -58,11 +56,21 @@ export class ArtifactsService implements OnModuleInit {
       return [];
     }
 
-    const files = fs.readdirSync(this.storagePath).filter((f) => f.endsWith('.json'));
+    const files = fs
+      .readdirSync(this.storagePath)
+      .filter((f) => f.endsWith('.json'));
     const artifacts = files.map((file) => {
-      const content = fs.readFileSync(path.join(this.storagePath, file), 'utf-8');
+      const content = fs.readFileSync(
+        path.join(this.storagePath, file),
+        'utf-8',
+      );
       return JSON.parse(content) as IMevArtifact;
     });
+    // here we decreasing reply size
+    for (let i = 0; i < artifacts.length; i++) {
+      artifacts[i].data = undefined;
+      artifacts[i].mevMined = undefined;
+    }
     return artifacts.sort((a, b) => (b.created ?? 0) - (a.created ?? 0));
   }
 

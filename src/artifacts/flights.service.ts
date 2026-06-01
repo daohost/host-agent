@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { IFlight } from '@daohost/host/out/bot';
+import { IFlight } from '@daohost/host';
 import { FlightsGateway } from './flights.gateway';
 
 @Injectable()
@@ -78,6 +78,10 @@ export class FlightsService implements OnModuleInit {
         return JSON.parse(content) as IFlight;
       }),
     );
+    // here we decreasing reply size
+    for (let i = 0; i < flights.length; i++) {
+      flights[i].workflows = [];
+    }
     return flights.sort((a, b) => (b.created ?? 0) - (a.created ?? 0));
   }
 

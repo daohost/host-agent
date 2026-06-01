@@ -15,7 +15,7 @@ import {
 import { ArtifactsService } from './artifacts.service';
 import { FlightsService } from './flights.service';
 import { ArtifactsAccessGuard } from './artifacts.guard';
-import { IMevArtifact } from '@daohost/host/out/daos/mevbots';
+import { IMevArtifact } from '@daohost/host';
 
 @Controller('artifacts')
 export class ArtifactsController {
@@ -48,10 +48,7 @@ export class ArtifactsController {
   }
 
   @Get()
-  findAll(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
+  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
     const all = this.artifactsService.findAll();
 
     if (!page && !limit) {

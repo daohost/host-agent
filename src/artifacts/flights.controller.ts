@@ -26,27 +26,27 @@ export class FlightsController {
   }
 
   @Get('successful')
-  findSuccessful(
+  async findSuccessful(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.paginate(this.flightsService.findSuccessful(), page, limit);
+    return this.paginate(await this.flightsService.findSuccessful(), page, limit);
   }
 
   @Get('active')
-  findActive(
+  async findActive(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.paginate(this.flightsService.findActive(), page, limit);
+    return this.paginate(await this.flightsService.findActive(), page, limit);
   }
 
   @Get()
-  findAll(
+  async findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.paginate(this.flightsService.findAll(), page, limit);
+    return this.paginate(await this.flightsService.findAll(), page, limit);
   }
 
   private paginate(all: IFlight[], page?: string, limit?: string) {
@@ -67,8 +67,8 @@ export class FlightsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    const flight = this.flightsService.findById(id);
+  async findOne(@Param('id') id: string) {
+    const flight = await this.flightsService.findById(id);
     if (!flight) {
       throw new NotFoundException(`Flight ${id} not found`);
     }
@@ -78,8 +78,8 @@ export class FlightsController {
   @Delete(':id')
   @UseGuards(ArtifactsAccessGuard)
   @HttpCode(204)
-  remove(@Param('id') id: string) {
-    const deleted = this.flightsService.delete(id);
+  async remove(@Param('id') id: string) {
+    const deleted = await this.flightsService.delete(id);
     if (!deleted) {
       throw new NotFoundException(`Flight ${id} not found`);
     }

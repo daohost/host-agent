@@ -39,8 +39,8 @@ export class ArtifactsController {
   }
 
   @Get('by-flight/:flightId')
-  findByFlight(@Param('flightId') flightId: string) {
-    const flight = this.flightsService.findById(flightId);
+  async findByFlight(@Param('flightId') flightId: string) {
+    const flight = await this.flightsService.findById(flightId);
     if (!flight) {
       throw new NotFoundException(`Flight ${flightId} not found`);
     }

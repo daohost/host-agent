@@ -22,7 +22,7 @@ export class FlightsGateway implements OnGatewayConnection {
     private readonly botsService: BotsService,
   ) {}
 
-  handleConnection(client: Socket) {
+  async handleConnection(client: Socket) {
     const flightId =
       (client.handshake.query.flightId as string) ||
       (client.handshake.auth?.flightId as string);
@@ -35,7 +35,7 @@ export class FlightsGateway implements OnGatewayConnection {
       return;
     }
 
-    const flight = this.flightsService.findById(flightId);
+    const flight = await this.flightsService.findById(flightId);
     if (!flight) {
       client.emit('error', { message: `Flight ${flightId} not found` });
       client.disconnect();

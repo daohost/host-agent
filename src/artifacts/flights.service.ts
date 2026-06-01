@@ -5,7 +5,7 @@ import {
   OnModuleInit,
   forwardRef,
 } from '@nestjs/common';
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { IFlight } from '@daohost/host/out/bot';
 import { FlightsGateway } from './flights.gateway';
@@ -22,11 +22,9 @@ export class FlightsService implements OnModuleInit {
     this.storagePath = path.resolve(process.cwd(), 'flights');
   }
 
-  onModuleInit() {
-    if (!fs.existsSync(this.storagePath)) {
-      fs.mkdirSync(this.storagePath, { recursive: true });
-      this.logger.log(`Created flights storage at ${this.storagePath}`);
-    }
+  async onModuleInit(): Promise<void> {
+    await fs.mkdir(this.storagePath, { recursive: true });
+    this.logger.log(`Flights storage ready at ${this.storagePath}`);
   }
 
   private getFilePath(id: string): string {
@@ -34,57 +32,63 @@ export class FlightsService implements OnModuleInit {
     return path.join(this.storagePath, `${safeId}.json`);
   }
 
-  upsert(flight: IFlight): IFlight {
+  async upsert(flight: IFlight): Promise<IFlight> {
     const filePath = this.getFilePath(flight.id);
-    fs.writeFileSync(filePath, JSON.stringify(flight, null, 2), 'utf-8');
+    await fs.writeFile(filePath, JSON.stringify(flight, null, 2), 'utf-8');
     this.logger.log(`Saved flight: ${flight.id}`);
     this.flightsGateway.broadcastFlightUpdated(flight);
     return flight;
   }
 
-  findById(id: string): IFlight | null {
+  async findById(id: string): Promise<IFlight | null> {
     const filePath = this.getFilePath(id);
-    if (!fs.existsSync(filePath)) {
-      return null;
-    }
-
-    const content = fs.readFileSync(filePath, 'utf-8');
-    return JSON.parse(content) as IFlight;
-  }
-
-  findSuccessful(): IFlight[] {
-    return this.findAll().filter((f) => f.made?.length > 0);
-  }
-
-  findActive(): IFlight[] {
-    return this.findAll().filter((f) => f.complete == null);
-  }
-
-  findAll(): IFlight[] {
-    if (!fs.existsSync(this.storagePath)) {
-      return [];
-    }
-
-    const files = fs
-      .readdirSync(this.storagePath)
-      .filter((f) => f.endsWith('.json'));
-    const flights = files.map((file) => {
-      const content = fs.readFileSync(
-        path.join(this.storagePath, file),
-        'utf-8',
-      );
+    try {
+      const content = await fs.readFile(filePath, 'utf-8');
       return JSON.parse(content) as IFlight;
-    });
+    } catch (e) {
+      if (e?.code === 'ENOENT') return null;
+      throw e;
+    }
+  }
+
+  async findSuccessful(): Promise<IFlight[]> {
+    return (await this.findAll()).filter((f) => f.made?.length > 0);
+  }
+
+  async findActive(): Promise<IFlight[]> {
+    return (await this.findAll()).filter((f) => f.complete == null);
+  }
+
+  async findAll(): Promise<IFlight[]> {
+    let entries: string[];
+    try {
+      entries = await fs.readdir(this.storagePath);
+    } catch (e) {
+      if (e?.code === 'ENOENT') return [];
+      throw e;
+    }
+
+    const files = entries.filter((f) => f.endsWith('.json'));
+    const flights = await Promise.all(
+      files.map(async (file) => {
+        const content = await fs.readFile(
+          path.join(this.storagePath, file),
+          'utf-8',
+        );
+        return JSON.parse(content) as IFlight;
+      }),
+    );
     return flights.sort((a, b) => (b.created ?? 0) - (a.created ?? 0));
   }
 
-  delete(id: string): boolean {
+  async delete(id: string): Promise<boolean> {
     const filePath = this.getFilePath(id);
-    if (!fs.existsSync(filePath)) {
-      return false;
+    try {
+      await fs.unlink(filePath);
+    } catch (e) {
+      if (e?.code === 'ENOENT') return false;
+      throw e;
     }
-
-    fs.unlinkSync(filePath);
     this.logger.log(`Deleted flight: ${id}`);
     this.flightsGateway.broadcastFlightDeleted(id);
     return true;

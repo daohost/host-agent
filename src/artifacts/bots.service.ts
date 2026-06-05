@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import { IBot } from '@daohost/host';
@@ -8,8 +9,10 @@ export class BotsService implements OnModuleInit {
   private readonly logger = new Logger(BotsService.name);
   private readonly storagePath: string;
 
-  constructor() {
-    this.storagePath = path.resolve(process.cwd(), 'bots');
+  constructor(private readonly configService: ConfigService) {
+    const base =
+      this.configService.get<string>('storagePath') ?? process.cwd();
+    this.storagePath = path.resolve(base, 'bots');
   }
 
   onModuleInit() {

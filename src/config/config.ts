@@ -6,6 +6,8 @@ export const config = () => ({
   txSenderEnabled: process.env.TX_SENDER_ENABLED === 'true',
   twitterApiKey: process.env.TWITTERAPI_API_KEY,
   artifactsAccessCode: process.env.ARTIFACTS_ACCESS_CODE,
+  storagePath: process.env.STORAGE_PATH || process.cwd(),
+  cacheEnabled: process.env.ARTIFACTS_CACHE === 'true',
 });
 
 export const Commands = {

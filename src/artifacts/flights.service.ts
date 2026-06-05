@@ -5,26 +5,61 @@ import {
   OnModuleInit,
   forwardRef,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { IFlight } from '@daohost/host';
 import { FlightsGateway } from './flights.gateway';
+import { readJsonFiles } from './read-json-files';
+
+const READ_CONCURRENCY = 64;
 
 @Injectable()
 export class FlightsService implements OnModuleInit {
   private readonly logger = new Logger(FlightsService.name);
   private readonly storagePath: string;
+  private readonly cacheEnabled: boolean;
+  private readonly cache = new Map<string, IFlight>();
+  private cacheReady = false;
 
   constructor(
     @Inject(forwardRef(() => FlightsGateway))
     private readonly flightsGateway: FlightsGateway,
+    private readonly configService: ConfigService,
   ) {
-    this.storagePath = path.resolve(process.cwd(), 'flights');
+    const base =
+      this.configService.get<string>('storagePath') ?? process.cwd();
+    this.storagePath = path.resolve(base, 'flights');
+    this.cacheEnabled =
+      this.configService.get<boolean>('cacheEnabled') ?? false;
   }
 
   async onModuleInit(): Promise<void> {
     await fs.mkdir(this.storagePath, { recursive: true });
     this.logger.log(`Flights storage ready at ${this.storagePath}`);
+    if (!this.cacheEnabled) {
+      this.logger.log('Flights cache disabled — serving from disk');
+      return;
+    }
+    // Fire-and-forget: warming reads the whole store, so don't block app
+    // startup on it. Reads fall back to disk until the cache is ready.
+    this.logger.log('Flights cache enabled — warming in background...');
+    void this.warmCache().catch((e) =>
+      this.logger.error(`Flights cache warm failed: ${e?.message}`),
+    );
+  }
+
+  private async warmCache(): Promise<void> {
+    const startedAt = process.hrtime.bigint();
+    this.cache.clear();
+    for (const flight of await this.readAllFromDisk()) {
+      this.cache.set(flight.id, flight);
+    }
+    this.cacheReady = true;
+    const ms = Number(process.hrtime.bigint() - startedAt) / 1e6;
+    this.logger.log(
+      `Loaded ${this.cache.size} flights into cache in ${ms.toFixed(0)}ms`,
+    );
   }
 
   private getFilePath(id: string): string {
@@ -35,18 +70,29 @@ export class FlightsService implements OnModuleInit {
   async upsert(flight: IFlight): Promise<IFlight> {
     const filePath = this.getFilePath(flight.id);
     await fs.writeFile(filePath, JSON.stringify(flight, null, 2), 'utf-8');
+    if (this.cacheEnabled) {
+      this.cache.set(flight.id, flight);
+    }
     this.logger.log(`Saved flight: ${flight.id}`);
     this.flightsGateway.broadcastFlightUpdated(flight);
     return flight;
   }
 
   async findById(id: string): Promise<IFlight | null> {
+    if (this.cacheEnabled && this.cacheReady) {
+      return this.cache.get(id) ?? null;
+    }
+
     const filePath = this.getFilePath(id);
     try {
       const content = await fs.readFile(filePath, 'utf-8');
       return JSON.parse(content) as IFlight;
     } catch (e) {
       if (e?.code === 'ENOENT') return null;
+      if (e instanceof SyntaxError) {
+        this.logger.warn(`Skipping corrupt flight file ${id}: ${e.message}`);
+        return null;
+      }
       throw e;
     }
   }
@@ -60,6 +106,17 @@ export class FlightsService implements OnModuleInit {
   }
 
   async findAll(): Promise<IFlight[]> {
+    const flights =
+      this.cacheEnabled && this.cacheReady
+        ? [...this.cache.values()]
+        : await this.readAllFromDisk();
+    // here we decreasing reply size (on copies, so cache entries stay intact)
+    return flights
+      .map((f) => ({ ...f, workflows: [] }))
+      .sort((a, b) => (b.created ?? 0) - (a.created ?? 0));
+  }
+
+  private async readAllFromDisk(): Promise<IFlight[]> {
     let entries: string[];
     try {
       entries = await fs.readdir(this.storagePath);
@@ -69,20 +126,13 @@ export class FlightsService implements OnModuleInit {
     }
 
     const files = entries.filter((f) => f.endsWith('.json'));
-    const flights = await Promise.all(
-      files.map(async (file) => {
-        const content = await fs.readFile(
-          path.join(this.storagePath, file),
-          'utf-8',
-        );
-        return JSON.parse(content) as IFlight;
-      }),
+    return readJsonFiles<IFlight>(
+      this.storagePath,
+      files,
+      READ_CONCURRENCY,
+      (file, message) =>
+        this.logger.warn(`Skipping corrupt flight file ${file}: ${message}`),
     );
-    // here we decreasing reply size
-    for (let i = 0; i < flights.length; i++) {
-      flights[i].workflows = [];
-    }
-    return flights.sort((a, b) => (b.created ?? 0) - (a.created ?? 0));
   }
 
   async delete(id: string): Promise<boolean> {
@@ -92,6 +142,9 @@ export class FlightsService implements OnModuleInit {
     } catch (e) {
       if (e?.code === 'ENOENT') return false;
       throw e;
+    }
+    if (this.cacheEnabled) {
+      this.cache.delete(id);
     }
     this.logger.log(`Deleted flight: ${id}`);
     this.flightsGateway.broadcastFlightDeleted(id);

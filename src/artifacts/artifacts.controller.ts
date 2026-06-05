@@ -38,18 +38,29 @@ export class ArtifactsController {
     }
   }
 
+  /**
+   * An artifact is only exposed via the API once its value has actually been
+   * mined — i.e. it has a `value` with a `miner`. Artifacts created before the
+   * value is mined are persisted but not served.
+   */
+  private isMined(artifact: IMevArtifact): boolean {
+    return !!artifact.value?.miner;
+  }
+
   @Get('by-flight/:flightId')
   async findByFlight(@Param('flightId') flightId: string) {
     const flight = await this.flightsService.findById(flightId);
     if (!flight) {
       throw new NotFoundException(`Flight ${flightId} not found`);
     }
-    return this.artifactsService.findByIds(flight.made ?? []);
+    return this.artifactsService
+      .findByIds(flight.made ?? [])
+      .filter((a) => this.isMined(a));
   }
 
   @Get()
   findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
-    const all = this.artifactsService.findAll();
+    const all = this.artifactsService.findAll().filter((a) => this.isMined(a));
 
     if (!page && !limit) {
       return { data: all, total: all.length };
@@ -70,7 +81,7 @@ export class ArtifactsController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     const artifact = this.artifactsService.findById(id);
-    if (!artifact) {
+    if (!artifact || !this.isMined(artifact)) {
       throw new NotFoundException(`Artifact ${id} not found`);
     }
     return artifact;

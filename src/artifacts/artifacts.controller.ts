@@ -63,6 +63,33 @@ export class ArtifactsController {
       .includes(loseReason.toLowerCase());
   }
 
+  /**
+   * Enrich an artifact with derived fields for the API response:
+   * `flight` (owning flight id) and `loseReason` (mirror of compare.result).
+   */
+  private enrich(
+    artifact: IMevArtifact,
+    flight?: string,
+  ): IMevArtifact & { flight?: string; loseReason?: string } {
+    return {
+      ...artifact,
+      flight,
+      loseReason: artifact.compare?.result,
+    };
+  }
+
+  /** Build an artifactId → flightId index from the flights' `made` lists. */
+  private async buildFlightIndex(): Promise<Map<string, string>> {
+    const flights = await this.flightsService.findAll();
+    const index = new Map<string, string>();
+    for (const flight of flights) {
+      for (const artifactId of flight.made ?? []) {
+        index.set(artifactId, flight.id);
+      }
+    }
+    return index;
+  }
+
   @Get('by-flight/:flightId')
   async findByFlight(
     @Param('flightId') flightId: string,
@@ -74,7 +101,8 @@ export class ArtifactsController {
     }
     return this.artifactsService
       .findByIds(flight.made ?? [])
-      .filter((a) => this.isMined(a) && this.matchesLoseReason(a, loseReason));
+      .filter((a) => this.isMined(a) && this.matchesLoseReason(a, loseReason))
+      .map((a) => this.enrich(a, flight.id));
   }
 
   /**
@@ -101,14 +129,16 @@ export class ArtifactsController {
   }
 
   @Get()
-  findAll(
+  async findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('loseReason') loseReason?: string,
   ) {
+    const flightIndex = await this.buildFlightIndex();
     const all = this.artifactsService
       .findAll()
-      .filter((a) => this.isMined(a) && this.matchesLoseReason(a, loseReason));
+      .filter((a) => this.isMined(a) && this.matchesLoseReason(a, loseReason))
+      .map((a) => this.enrich(a, flightIndex.get(a.id)));
 
     if (!page && !limit) {
       return { data: all, total: all.length };
@@ -127,12 +157,14 @@ export class ArtifactsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string) {
     const artifact = this.artifactsService.findById(id);
     if (!artifact || !this.isMined(artifact)) {
       throw new NotFoundException(`Artifact ${id} not found`);
     }
-    return artifact;
+    const flights = await this.flightsService.findAll();
+    const flight = flights.find((f) => (f.made ?? []).includes(id))?.id;
+    return this.enrich(artifact, flight);
   }
 
   @Put(':id')

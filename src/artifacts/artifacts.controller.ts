@@ -77,6 +77,29 @@ export class ArtifactsController {
       .filter((a) => this.isMined(a) && this.matchesLoseReason(a, loseReason));
   }
 
+  /**
+   * Filter metadata for the UI: the distinct lose reasons present across
+   * servable artifacts, plus the available flight names (ids).
+   */
+  @Get('filters')
+  async findFilters() {
+    const loseReasons = [
+      ...new Set(
+        this.artifactsService
+          .findAll()
+          .filter((a) => this.isMined(a))
+          .map((a) => a.compare?.result)
+          .filter((r): r is string => !!r),
+      ),
+    ].sort();
+
+    const flights = (await this.flightsService.findAll())
+      .map((f) => f.id)
+      .sort();
+
+    return { loseReasons, flights };
+  }
+
   @Get()
   findAll(
     @Query('page') page?: string,

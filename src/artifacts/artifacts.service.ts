@@ -12,6 +12,7 @@ export class ArtifactsService implements OnModuleInit {
   private readonly logger = new Logger(ArtifactsService.name);
   private readonly storagePath: string;
   private readonly cacheEnabled: boolean;
+  private readonly notSaveToDisk: boolean;
   private readonly cache = new Map<string, IMevArtifact>();
   private cacheReady = false;
 
@@ -19,8 +20,13 @@ export class ArtifactsService implements OnModuleInit {
     const base =
       this.configService.get<string>('storagePath') ?? process.cwd();
     this.storagePath = path.resolve(base, 'artifacts');
+    this.notSaveToDisk =
+      this.configService.get<boolean>('notSaveArtifactsToDisk') ?? false;
+    // Not persisting to disk means the in-memory cache is the only store,
+    // so caching is implicitly required in that mode.
     this.cacheEnabled =
-      this.configService.get<boolean>('cacheEnabled') ?? false;
+      (this.configService.get<boolean>('cacheEnabled') ?? false) ||
+      this.notSaveToDisk;
   }
 
   onModuleInit(): void {
@@ -31,6 +37,11 @@ export class ArtifactsService implements OnModuleInit {
     if (!this.cacheEnabled) {
       this.logger.log('Artifacts cache disabled — serving from disk');
       return;
+    }
+    if (this.notSaveToDisk) {
+      this.logger.warn(
+        'NOT_SAVE_ARTIFACTS_TO_DISK is on — new/updated artifacts are kept in memory only',
+      );
     }
     // Fire-and-forget: warming reads the whole store, so don't block app
     // startup on it. Reads fall back to disk until the cache is ready.
@@ -96,12 +107,20 @@ export class ArtifactsService implements OnModuleInit {
   }
 
   create(artifact: IMevArtifact): IMevArtifact {
-    const filePath = this.getFilePath(artifact.id);
-    if (fs.existsSync(filePath)) {
+    const exists = this.notSaveToDisk
+      ? this.cache.has(artifact.id)
+      : fs.existsSync(this.getFilePath(artifact.id));
+    if (exists) {
       throw new Error(`Artifact ${artifact.id} already exists`);
     }
 
-    fs.writeFileSync(filePath, JSON.stringify(artifact, null, 2), 'utf-8');
+    if (!this.notSaveToDisk) {
+      fs.writeFileSync(
+        this.getFilePath(artifact.id),
+        JSON.stringify(artifact, null, 2),
+        'utf-8',
+      );
+    }
     if (this.cacheEnabled) {
       this.cache.set(artifact.id, artifact);
     }
@@ -153,8 +172,13 @@ export class ArtifactsService implements OnModuleInit {
       updated: Date.now(),
     };
 
-    const filePath = this.getFilePath(id);
-    fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf-8');
+    if (!this.notSaveToDisk) {
+      fs.writeFileSync(
+        this.getFilePath(id),
+        JSON.stringify(updated, null, 2),
+        'utf-8',
+      );
+    }
     if (this.cacheEnabled) {
       this.cache.set(id, updated);
     }
@@ -163,6 +187,15 @@ export class ArtifactsService implements OnModuleInit {
   }
 
   delete(id: string): boolean {
+    if (this.notSaveToDisk) {
+      if (!this.cache.has(id)) {
+        return false;
+      }
+      this.cache.delete(id);
+      this.logger.log(`Deleted artifact: ${id}`);
+      return true;
+    }
+
     const filePath = this.getFilePath(id);
     if (!fs.existsSync(filePath)) {
       return false;

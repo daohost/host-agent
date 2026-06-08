@@ -8,6 +8,7 @@ export const config = () => ({
   artifactsAccessCode: process.env.ARTIFACTS_ACCESS_CODE,
   storagePath: process.env.STORAGE_PATH || process.cwd(),
   cacheEnabled: process.env.ARTIFACTS_CACHE === 'true',
+  notSaveArtifactsToDisk: process.env.NOT_SAVE_ARTIFACTS_TO_DISK === 'true',
 });
 
 export const Commands = {

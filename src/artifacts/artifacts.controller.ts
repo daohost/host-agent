@@ -47,20 +47,45 @@ export class ArtifactsController {
     return !!artifact.value?.miner;
   }
 
+  /**
+   * Optional `loseReason` filter — case-insensitive substring match against
+   * the artifact's compare result (the lose reason/s). No filter when empty.
+   */
+  private matchesLoseReason(
+    artifact: IMevArtifact,
+    loseReason?: string,
+  ): boolean {
+    if (!loseReason) {
+      return true;
+    }
+    return (artifact.compare?.result ?? '')
+      .toLowerCase()
+      .includes(loseReason.toLowerCase());
+  }
+
   @Get('by-flight/:flightId')
-  async findByFlight(@Param('flightId') flightId: string) {
+  async findByFlight(
+    @Param('flightId') flightId: string,
+    @Query('loseReason') loseReason?: string,
+  ) {
     const flight = await this.flightsService.findById(flightId);
     if (!flight) {
       throw new NotFoundException(`Flight ${flightId} not found`);
     }
     return this.artifactsService
       .findByIds(flight.made ?? [])
-      .filter((a) => this.isMined(a));
+      .filter((a) => this.isMined(a) && this.matchesLoseReason(a, loseReason));
   }
 
   @Get()
-  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
-    const all = this.artifactsService.findAll().filter((a) => this.isMined(a));
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('loseReason') loseReason?: string,
+  ) {
+    const all = this.artifactsService
+      .findAll()
+      .filter((a) => this.isMined(a) && this.matchesLoseReason(a, loseReason));
 
     if (!page && !limit) {
       return { data: all, total: all.length };

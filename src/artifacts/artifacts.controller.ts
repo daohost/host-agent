@@ -78,6 +78,24 @@ export class ArtifactsController {
     };
   }
 
+  /** Paginate a list; returns the full list when neither page nor limit set. */
+  private paginate<T>(all: T[], page?: string, limit?: string) {
+    if (!page && !limit) {
+      return { data: all, total: all.length };
+    }
+
+    const p = Math.max(1, parseInt(page ?? '1'));
+    const l = Math.min(100, Math.max(1, parseInt(limit ?? '20')));
+    const start = (p - 1) * l;
+
+    return {
+      data: all.slice(start, start + l),
+      total: all.length,
+      page: p,
+      limit: l,
+    };
+  }
+
   /** Build an artifactId → flightId index from the flights' `made` lists. */
   private async buildFlightIndex(): Promise<Map<string, string>> {
     const flights = await this.flightsService.findAll();
@@ -93,16 +111,20 @@ export class ArtifactsController {
   @Get('by-flight/:flightId')
   async findByFlight(
     @Param('flightId') flightId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
     @Query('loseReason') loseReason?: string,
   ) {
     const flight = await this.flightsService.findById(flightId);
     if (!flight) {
       throw new NotFoundException(`Flight ${flightId} not found`);
     }
-    return this.artifactsService
+    const all = this.artifactsService
       .findByIds(flight.made ?? [])
       .filter((a) => this.isMined(a) && this.matchesLoseReason(a, loseReason))
       .map((a) => this.enrich(a, flight.id));
+
+    return this.paginate(all, page, limit);
   }
 
   /**
@@ -122,8 +144,8 @@ export class ArtifactsController {
     ].sort();
 
     const flights = (await this.flightsService.findAll())
-      .map((f) => f.id)
-      .sort();
+      .sort((a, b) => (b.created ?? 0) - (a.created ?? 0))
+      .map((f) => f.id);
 
     return { loseReasons, flights };
   }
@@ -140,20 +162,7 @@ export class ArtifactsController {
       .filter((a) => this.isMined(a) && this.matchesLoseReason(a, loseReason))
       .map((a) => this.enrich(a, flightIndex.get(a.id)));
 
-    if (!page && !limit) {
-      return { data: all, total: all.length };
-    }
-
-    const p = Math.max(1, parseInt(page ?? '1'));
-    const l = Math.min(100, Math.max(1, parseInt(limit ?? '20')));
-    const start = (p - 1) * l;
-
-    return {
-      data: all.slice(start, start + l),
-      total: all.length,
-      page: p,
-      limit: l,
-    };
+    return this.paginate(all, page, limit);
   }
 
   @Get(':id')

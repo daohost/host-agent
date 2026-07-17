@@ -16,12 +16,19 @@ import { ArtifactsService } from './artifacts.service';
 import { FlightsService } from './flights.service';
 import { ArtifactsAccessGuard } from './artifacts.guard';
 import { IMevArtifact } from '@daohost/host';
+import { MinersService } from './miners.service';
+import {
+  countArtifactsByLoseReason,
+  matchesLoseReason,
+  matchesMiner,
+} from './artifact-filters';
 
 @Controller('artifacts')
 export class ArtifactsController {
   constructor(
     private readonly artifactsService: ArtifactsService,
     private readonly flightsService: FlightsService,
+    private readonly minersService: MinersService,
   ) {}
 
   @Post()
@@ -30,11 +37,11 @@ export class ArtifactsController {
   create(@Body() artifact: IMevArtifact) {
     try {
       return this.artifactsService.create(artifact);
-    } catch (e) {
-      if (e.message?.includes('already exists')) {
-        throw new ConflictException(e.message);
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message.includes('already exists')) {
+        throw new ConflictException(error.message);
       }
-      throw e;
+      throw error;
     }
   }
 
@@ -45,22 +52,6 @@ export class ArtifactsController {
    */
   private isMined(artifact: IMevArtifact): boolean {
     return !!artifact.value?.miner;
-  }
-
-  /**
-   * Optional `loseReason` filter — case-insensitive substring match against
-   * the artifact's compare result (the lose reason/s). No filter when empty.
-   */
-  private matchesLoseReason(
-    artifact: IMevArtifact,
-    loseReason?: string,
-  ): boolean {
-    if (!loseReason) {
-      return true;
-    }
-    return (artifact.compare?.result ?? '')
-      .toLowerCase()
-      .includes(loseReason.toLowerCase());
   }
 
   /**
@@ -79,9 +70,14 @@ export class ArtifactsController {
   }
 
   /** Paginate a list; returns the full list when neither page nor limit set. */
-  private paginate<T>(all: T[], page?: string, limit?: string) {
+  private paginate<T>(
+    all: T[],
+    page?: string,
+    limit?: string,
+    totalsByLoseReason?: Record<string, number>,
+  ) {
     if (!page && !limit) {
-      return { data: all, total: all.length };
+      return { data: all, total: all.length, totalsByLoseReason };
     }
 
     const p = Math.max(1, parseInt(page ?? '1'));
@@ -91,6 +87,7 @@ export class ArtifactsController {
     return {
       data: all.slice(start, start + l),
       total: all.length,
+      totalsByLoseReason,
       page: p,
       limit: l,
     };
@@ -114,17 +111,21 @@ export class ArtifactsController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('loseReason') loseReason?: string,
+    @Query('miner') miner?: string,
   ) {
     const flight = await this.flightsService.findById(flightId);
     if (!flight) {
       throw new NotFoundException(`Flight ${flightId} not found`);
     }
-    const all = this.artifactsService
+    const mined = this.artifactsService
       .findByIds(flight.made ?? [])
-      .filter((a) => this.isMined(a) && this.matchesLoseReason(a, loseReason))
+      .filter((a) => this.isMined(a) && matchesMiner(a, miner));
+    const totalsByLoseReason = countArtifactsByLoseReason(mined);
+    const all = mined
+      .filter((a) => matchesLoseReason(a, loseReason))
       .map((a) => this.enrich(a, flight.id));
 
-    return this.paginate(all, page, limit);
+    return this.paginate(all, page, limit, totalsByLoseReason);
   }
 
   /**
@@ -133,21 +134,20 @@ export class ArtifactsController {
    */
   @Get('filters')
   async findFilters() {
-    const loseReasons = [
-      ...new Set(
-        this.artifactsService
-          .findAll()
-          .filter((a) => this.isMined(a))
-          .map((a) => a.compare?.result)
-          .filter((r): r is string => !!r),
-      ),
-    ].sort();
+    const mined = this.artifactsService
+      .findAll()
+      .filter((a) => this.isMined(a));
+    const totalsByLoseReason = countArtifactsByLoseReason(mined);
+    const loseReasons = Object.keys(totalsByLoseReason);
+    const miners = this.minersService
+      .findAllFromArtifacts(mined)
+      .map(({ addr, name }) => ({ addr, name }));
 
     const flights = (await this.flightsService.findAll())
       .sort((a, b) => (b.created ?? 0) - (a.created ?? 0))
       .map((f) => f.id);
 
-    return { loseReasons, flights };
+    return { loseReasons, miners, flights, totalsByLoseReason };
   }
 
   @Get()
@@ -155,14 +155,18 @@ export class ArtifactsController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('loseReason') loseReason?: string,
+    @Query('miner') miner?: string,
   ) {
     const flightIndex = await this.buildFlightIndex();
-    const all = this.artifactsService
+    const mined = this.artifactsService
       .findAll()
-      .filter((a) => this.isMined(a) && this.matchesLoseReason(a, loseReason))
+      .filter((a) => this.isMined(a) && matchesMiner(a, miner));
+    const totalsByLoseReason = countArtifactsByLoseReason(mined);
+    const all = mined
+      .filter((a) => matchesLoseReason(a, loseReason))
       .map((a) => this.enrich(a, flightIndex.get(a.id)));
 
-    return this.paginate(all, page, limit);
+    return this.paginate(all, page, limit, totalsByLoseReason);
   }
 
   @Get(':id')
@@ -181,11 +185,11 @@ export class ArtifactsController {
   update(@Param('id') id: string, @Body() updates: Partial<IMevArtifact>) {
     try {
       return this.artifactsService.update(id, updates);
-    } catch (e) {
-      if (e.message?.includes('not found')) {
-        throw new NotFoundException(e.message);
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        throw new NotFoundException(error.message);
       }
-      throw e;
+      throw error;
     }
   }
 

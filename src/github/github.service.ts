@@ -203,7 +203,7 @@ export class GithubService implements OnModuleInit {
   }
 
   private async resolveInstallationId() {
-    const { data: installations } =
+  const { data: installations } =
       await this.app.octokit.rest.apps.listInstallations();
 
     if (!installations.length) {

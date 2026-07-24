@@ -9,10 +9,13 @@ import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { IFlight } from '@daohost/host';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { ArtifactsService } from './artifacts.service';
 import { FlightsGateway } from './flights.gateway';
 import { readJsonFiles } from './read-json-files';
 
 const READ_CONCURRENCY = 64;
+const INACTIVE_FLIGHT_TTL_MS = 6 * 60 * 60 * 1000;
 
 @Injectable()
 export class FlightsService implements OnModuleInit {
@@ -26,9 +29,9 @@ export class FlightsService implements OnModuleInit {
     @Inject(forwardRef(() => FlightsGateway))
     private readonly flightsGateway: FlightsGateway,
     private readonly configService: ConfigService,
+    private readonly artifactsService: ArtifactsService,
   ) {
-    const base =
-      this.configService.get<string>('storagePath') ?? process.cwd();
+    const base = this.configService.get<string>('storagePath') ?? process.cwd();
     this.storagePath = path.resolve(base, 'flights');
     this.cacheEnabled =
       this.configService.get<boolean>('cacheEnabled') ?? false;
@@ -114,6 +117,45 @@ export class FlightsService implements OnModuleInit {
     return flights
       .map((f) => ({ ...f, workflows: [] }))
       .sort((a, b) => (b.created ?? 0) - (a.created ?? 0));
+  }
+
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async deleteInactiveFlights(): Promise<void> {
+    const flights = await this.findAll();
+    const currentFlight = flights
+      .filter((flight) => flight.complete == null)
+      .sort(
+        (a, b) => (b.time ?? b.created ?? 0) - (a.time ?? a.created ?? 0),
+      )[0];
+    const inactiveBefore = Date.now() - INACTIVE_FLIGHT_TTL_MS;
+
+    const candidates = flights.filter(
+      (flight) =>
+        flight.id !== currentFlight?.id &&
+        (flight.time ?? flight.created ?? 0) < inactiveBefore,
+    );
+
+    let deleted = 0;
+    for (const candidate of candidates) {
+      // Re-read before deletion because the flight may have been updated while
+      // the cleanup was running.
+      const latest = await this.findById(candidate.id);
+      if (
+        latest &&
+        latest.id !== currentFlight?.id &&
+        (latest.time ?? latest.created ?? 0) < inactiveBefore &&
+        !this.artifactsService
+          .findByIds(latest.made ?? [])
+          .some((artifact) => artifact.created >= inactiveBefore) &&
+        (await this.delete(latest.id))
+      ) {
+        deleted++;
+      }
+    }
+
+    if (deleted > 0) {
+      this.logger.log(`Deleted ${deleted} inactive flight(s)`);
+    }
   }
 
   private async readAllFromDisk(): Promise<IFlight[]> {

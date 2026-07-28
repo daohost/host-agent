@@ -10,7 +10,6 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { IFlight } from '@daohost/host';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { ArtifactsService } from './artifacts.service';
 import { FlightsGateway } from './flights.gateway';
 import { readJsonFiles } from './read-json-files';
 
@@ -29,7 +28,6 @@ export class FlightsService implements OnModuleInit {
     @Inject(forwardRef(() => FlightsGateway))
     private readonly flightsGateway: FlightsGateway,
     private readonly configService: ConfigService,
-    private readonly artifactsService: ArtifactsService,
   ) {
     const base = this.configService.get<string>('storagePath') ?? process.cwd();
     this.storagePath = path.resolve(base, 'flights');
@@ -144,9 +142,7 @@ export class FlightsService implements OnModuleInit {
         latest &&
         latest.id !== currentFlight?.id &&
         (latest.time ?? latest.created ?? 0) < inactiveBefore &&
-        !this.artifactsService
-          .findByIds(latest.made ?? [])
-          .some((artifact) => artifact.created >= inactiveBefore) &&
+        (latest.made?.length ?? 0) === 0 &&
         (await this.delete(latest.id))
       ) {
         deleted++;

@@ -1,6 +1,5 @@
 import { IFlight } from '@daohost/host';
 import { ConfigService } from '@nestjs/config';
-import { ArtifactsService } from './artifacts.service';
 import { FlightsService } from './flights.service';
 import { FlightsGateway } from './flights.gateway';
 
@@ -14,10 +13,8 @@ const flight = (id: string, time: number, complete?: number): IFlight =>
 
 describe('FlightsService cleanup', () => {
   let service: FlightsService;
-  let artifactsService: { findByIds: jest.Mock };
 
   beforeEach(() => {
-    artifactsService = { findByIds: jest.fn(() => []) };
     service = new FlightsService(
       {
         broadcastFlightDeleted: jest.fn(),
@@ -28,7 +25,6 @@ describe('FlightsService cleanup', () => {
           key === 'storagePath' ? process.cwd() : false,
         ),
       } as unknown as ConfigService,
-      artifactsService as unknown as ArtifactsService,
     );
   });
 
@@ -78,25 +74,19 @@ describe('FlightsService cleanup', () => {
     expect(deleteSpy).not.toHaveBeenCalled();
   });
 
-  it('does not delete a flight that produced an artifact in the last six hours', async () => {
+  it('does not delete a flight that has artifacts regardless of their age', async () => {
     const now = Date.now();
     const stale = {
       ...flight('stale', now - 7 * 60 * 60 * 1000, now),
-      made: ['recent-artifact'],
+      made: ['old-artifact'],
     };
 
-    artifactsService.findByIds.mockReturnValue([
-      { id: 'recent-artifact', created: now - 5 * 60 * 60 * 1000 },
-    ]);
     jest.spyOn(service, 'findAll').mockResolvedValue([stale]);
     jest.spyOn(service, 'findById').mockResolvedValue(stale);
     const deleteSpy = jest.spyOn(service, 'delete').mockResolvedValue(true);
 
     await service.deleteInactiveFlights();
 
-    expect(artifactsService.findByIds).toHaveBeenCalledWith([
-      'recent-artifact',
-    ]);
     expect(deleteSpy).not.toHaveBeenCalled();
   });
 });

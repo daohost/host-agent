@@ -4,11 +4,17 @@ describe('ArtifactsController filters', () => {
   const MINER_A = '0x0000000000000000000000000000000000000001';
   const MINER_B = '0x0000000000000000000000000000000000000002';
 
-  function artifact(id: string, loseReason: string, miner: string) {
+  function artifact(
+    id: string,
+    loseReason: string,
+    miner: string,
+    income = 0,
+    profit = 0,
+  ) {
     return {
       id,
       compare: { result: loseReason },
-      value: { miner },
+      value: { miner, income, profit },
     };
   }
 
@@ -41,5 +47,32 @@ describe('ArtifactsController filters', () => {
       'Making fail': 1,
       Unknown: 1,
     });
+  });
+
+  it('sorts before pagination', async () => {
+    const artifactsService = {
+      findAll: jest.fn(() => [
+        artifact('a', 'Unknown', MINER_A, 10, 3),
+        artifact('b', 'Unknown', MINER_A, 30, 1),
+        artifact('c', 'Unknown', MINER_A, 20, 2),
+      ]),
+    };
+    const controller = new ArtifactsController(
+      artifactsService as never,
+      { findAll: jest.fn(async () => []) } as never,
+      { findAll: jest.fn(() => []) } as never,
+    );
+
+    const response = await controller.findAll(
+      '1',
+      '2',
+      undefined,
+      undefined,
+      'income',
+      'desc',
+    );
+
+    expect(response.data.map(({ id }) => id)).toEqual(['b', 'c']);
+    expect(response.total).toBe(3);
   });
 });

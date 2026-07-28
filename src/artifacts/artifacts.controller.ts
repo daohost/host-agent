@@ -21,6 +21,7 @@ import {
   countArtifactsByLoseReason,
   matchesLoseReason,
   matchesMiner,
+  sortArtifactsByValue,
 } from './artifact-filters';
 
 @Controller('artifacts')
@@ -112,6 +113,8 @@ export class ArtifactsController {
     @Query('limit') limit?: string,
     @Query('loseReason') loseReason?: string,
     @Query('miner') miner?: string,
+    @Query('sort') sort?: string,
+    @Query('order') order?: string,
   ) {
     const flight = await this.flightsService.findById(flightId);
     if (!flight) {
@@ -121,9 +124,13 @@ export class ArtifactsController {
       .findByIds(flight.made ?? [])
       .filter((a) => this.isMined(a) && matchesMiner(a, miner));
     const totalsByLoseReason = countArtifactsByLoseReason(mined);
-    const all = mined
-      .filter((a) => matchesLoseReason(a, loseReason))
-      .map((a) => this.enrich(a, flight.id));
+    const all = sortArtifactsByValue(
+      mined
+        .filter((a) => matchesLoseReason(a, loseReason))
+        .map((a) => this.enrich(a, flight.id)),
+      sort,
+      order,
+    );
 
     return this.paginate(all, page, limit, totalsByLoseReason);
   }
@@ -156,15 +163,21 @@ export class ArtifactsController {
     @Query('limit') limit?: string,
     @Query('loseReason') loseReason?: string,
     @Query('miner') miner?: string,
+    @Query('sort') sort?: string,
+    @Query('order') order?: string,
   ) {
     const flightIndex = await this.buildFlightIndex();
     const mined = this.artifactsService
       .findAll()
       .filter((a) => this.isMined(a) && matchesMiner(a, miner));
     const totalsByLoseReason = countArtifactsByLoseReason(mined);
-    const all = mined
-      .filter((a) => matchesLoseReason(a, loseReason))
-      .map((a) => this.enrich(a, flightIndex.get(a.id)));
+    const all = sortArtifactsByValue(
+      mined
+        .filter((a) => matchesLoseReason(a, loseReason))
+        .map((a) => this.enrich(a, flightIndex.get(a.id))),
+      sort,
+      order,
+    );
 
     return this.paginate(all, page, limit, totalsByLoseReason);
   }

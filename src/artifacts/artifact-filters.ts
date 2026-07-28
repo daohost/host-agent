@@ -43,3 +43,26 @@ export function countArtifactsByLoseReason(
       .map(({ label, total }) => [label, total]),
   );
 }
+
+export function sortArtifactsByValue<T extends IMevArtifact>(
+  artifacts: T[],
+  sort?: string,
+  order?: string,
+): T[] {
+  if (sort !== 'income' && sort !== 'profit') {
+    return artifacts;
+  }
+
+  const direction = order === 'asc' ? 1 : -1;
+  return [...artifacts].sort((a, b) => {
+    const aValue = a.value?.[sort];
+    const bValue = b.value?.[sort];
+    const aPresent = Number.isFinite(aValue);
+    const bPresent = Number.isFinite(bValue);
+
+    if (!aPresent && !bPresent) return 0;
+    if (!aPresent) return 1;
+    if (!bPresent) return -1;
+    return (aValue! - bValue!) * direction;
+  });
+}

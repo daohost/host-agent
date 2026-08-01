@@ -121,6 +121,9 @@ export class GithubService implements OnModuleInit {
         .filter((r): r is string => !!r);
 
       for (const repo of repos) {
+        if (repo == 'stabilitydao/stability-node-pro') {
+          continue
+        }
         const [owner, repoName] = repo.split('/');
         this.logger.log(`🔄 Syncing labels for ${repo}...`);
 

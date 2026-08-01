@@ -282,7 +282,7 @@ export class GithubService implements OnModuleInit {
           this.issues[repo] = issues.map((i) => this.issueToDTO(i, repo));
         } catch (e) {
           this.logger.error(
-            `Failed to fetch issues for ${repo}: ${e?.status || e?.message || e}`,
+            `Failed to fetch issues for ${repo} Status: ${e?.status}. Message: ${e?.message || e}`
           );
         }
       }
@@ -315,7 +315,7 @@ export class GithubService implements OnModuleInit {
           };
         } catch (e) {
           this.logger.error(
-            `Failed to fetch repo data for ${repo}: ${e?.status || e?.message || e}`,
+            `Failed to fetch repo data for ${repo}. Status: ${e?.status}. Message: ${e?.message || e}.`,
           );
         }
       }

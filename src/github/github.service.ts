@@ -285,6 +285,7 @@ export class GithubService implements OnModuleInit {
             `Failed to fetch issues for ${repo} Status: ${e?.status}. Message: ${e?.message || e}`
           );
         }
+        await sleep(1)
       }
 
       for (const repo of repos) {
@@ -318,6 +319,7 @@ export class GithubService implements OnModuleInit {
             `Failed to fetch repo data for ${repo}. Status: ${e?.status}. Message: ${e?.message || e}.`,
           );
         }
+        await sleep(1)
       }
     }
   }

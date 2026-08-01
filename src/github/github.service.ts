@@ -121,9 +121,6 @@ export class GithubService implements OnModuleInit {
         .filter((r): r is string => !!r);
 
       for (const repo of repos) {
-        if (repo == 'stabilitydao/stability-node-pro') {
-          continue
-        }
         const [owner, repoName] = repo.split('/');
         this.logger.log(`🔄 Syncing labels for ${repo}...`);
 
@@ -285,7 +282,7 @@ export class GithubService implements OnModuleInit {
           this.issues[repo] = issues.map((i) => this.issueToDTO(i, repo));
         } catch (e) {
           this.logger.error(
-            `Failed to fetch issues for ${repo} Status: ${e?.status}. Message: ${e?.message || e}`
+            `Failed to fetch issues for ${repo}. Status: ${e?.status}. Message: ${e?.message || e}`
           );
         }
         await sleep(1)
@@ -382,7 +379,7 @@ export class GithubService implements OnModuleInit {
             };
           } catch (e) {
             this.logger.error(
-              `Failed to fetch issues for ${repo}: ${e?.status || e?.message || e}`,
+              `Failed to fetch issues for ${repo}. Status: ${e?.status}. Message: ${e?.message || e}`,
             );
           }
         }

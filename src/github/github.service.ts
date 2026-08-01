@@ -146,7 +146,7 @@ export class GithubService implements OnModuleInit {
               color,
               description: label.description,
             });
-            await sleep(2)
+            await sleep(1)
           } else if (
             existingLabel.color !== color ||
             existingLabel.description !== label.description
@@ -159,7 +159,7 @@ export class GithubService implements OnModuleInit {
               color,
               description: label.description,
             });
-            await sleep(2)
+            await sleep(1)
           } else {
             this.logger.log(`✅ ${label.name} is up to date`);
           }
@@ -261,6 +261,8 @@ export class GithubService implements OnModuleInit {
   }
 
   private async updateBuilderData() {
+    this.logger.debug(`updateBuilderData`)
+
     for (const dao of this.daos) {
       const repos = dao?.unitEmitData
         ?.flatMap((u) => u.pool?.repos)
@@ -288,42 +290,54 @@ export class GithubService implements OnModuleInit {
             `Failed to fetch issues for ${repo}. Status: ${e?.status}. Message: ${e?.message || e}`
           );
         }
-        await sleep(2)
+        await sleep(1)
       }
 
       for (const repo of repos) {
         const [owner, repoName] = repo.split('/');
         this.logger.log(`Fetching repo ${repo}...`);
 
+        let repoData: any
         try {
-          const { data: repoData } = await octokit.rest.repos.get({
+          const r = await octokit.rest.repos.get({
             owner,
             repo: repoName,
           });
-          await sleep(1)
+          repoData = r.data;
 
-          const { data: collaborators } =
+        } catch (e) {
+          this.logger.error(
+            `Failed to fetch repo data for ${repo}. Status: ${e?.status}. Message: ${e?.message || e}.`,
+          );
+          continue
+        }
+        await sleep(1)
+
+        let collaborators: any
+        try {
+          const r =
             await octokit.rest.repos.listCollaborators({
               owner,
               repo: repoName,
               per_page: 100,
             });
-
-          this.repos[dao.symbol][repo] = {
-            openIssues: this.issues[repo]?.length ?? 0,
-            private: repoData.private,
-            access: collaborators.map((c) => ({
-              username: c.login,
-              img: c.avatar_url,
-            })),
-            stars: repoData.stargazers_count,
-          };
+          collaborators = r.data;
         } catch (e) {
           this.logger.error(
-            `Failed to fetch repo data for ${repo}. Status: ${e?.status}. Message: ${e?.message || e}.`,
+            `Failed to fetch repo collaboratorsfor ${repo}. Status: ${e?.status}. Message: ${e?.message || e}.`,
           );
         }
         await sleep(1)
+
+        this.repos[dao.symbol][repo] = {
+          openIssues: this.issues[repo]?.length ?? 0,
+          private: repoData.private,
+          access: collaborators ? collaborators.map((c) => ({
+            username: c.login,
+            img: c.avatar_url,
+          })) : undefined,
+          stars: repoData.stargazers_count,
+        };
       }
     }
   }
@@ -390,7 +404,7 @@ export class GithubService implements OnModuleInit {
               `Failed to fetch issues for ${repo}. Status: ${e?.status}. Message: ${e?.message || e}`,
             );
           }
-          await sleep(2)
+          await sleep(1)
         }
       }
     }

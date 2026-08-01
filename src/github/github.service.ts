@@ -129,6 +129,7 @@ export class GithubService implements OnModuleInit {
           repo: repoName,
           per_page: 100,
         });
+        await sleep(1)
 
         for (const label of labels) {
           const existingLabel = existing.find((l) => l.name === label.name);
@@ -145,6 +146,7 @@ export class GithubService implements OnModuleInit {
               color,
               description: label.description,
             });
+            await sleep(2)
           } else if (
             existingLabel.color !== color ||
             existingLabel.description !== label.description
@@ -157,6 +159,7 @@ export class GithubService implements OnModuleInit {
               color,
               description: label.description,
             });
+            await sleep(2)
           } else {
             this.logger.log(`✅ ${label.name} is up to date`);
           }

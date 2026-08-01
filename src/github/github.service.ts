@@ -323,8 +323,8 @@ export class GithubService implements OnModuleInit {
             });
           collaborators = r.data;
         } catch (e) {
-          this.logger.error(
-            `Failed to fetch repo collaboratorsfor ${repo}. Status: ${e?.status}. Message: ${e?.message || e}.`,
+          this.logger.warn(
+            `Failed to fetch repo collaborators for ${repo}. Status: ${e?.status}. Message: ${e?.message || e}.`,
           );
         }
         await sleep(1)
@@ -343,6 +343,8 @@ export class GithubService implements OnModuleInit {
   }
 
   private async updateBuilderMemory() {
+    this.logger.debug(`updateBuilderMemory`)
+
     const builderData: IBuildersMemoryV3 = {};
     for (const dao of this.daos) {
       builderData[dao.symbol] = {
@@ -360,51 +362,62 @@ export class GithubService implements OnModuleInit {
           const [owner, repoName] = repo.split('/');
           this.logger.log(`Fetching issues for ${repo}...`);
 
+          let issuesCount: number = 0;
+          let issues: any
+          let repoData: any
+          let collaborators: any
+
           try {
-            const { data: issues } = await octokit.rest.issues.listForRepo({
+            let r:any = await octokit.rest.issues.listForRepo({
               owner,
               repo: repoName,
               per_page: 100,
             });
-
+            issues = r.data;
+            issuesCount = issues.length;
+            issues.forEach((issue) => {
+              const issueData = this.issueToDTO(issue, repo);
+              builderData[dao.symbol].openIssues[unit.unitId].push(issueData);
+            });
             await sleep(1)
-
-            const { data: repoData } = await octokit.rest.repos.get({
+            r = await octokit.rest.repos.get({
               owner,
               repo: repoName,
             });
-
+            repoData = r.data;
             await sleep(1)
+          } catch (e) {
+            this.logger.error(
+              `Failed to fetch issues and data for ${repo}. Status: ${e?.status}. Message: ${e?.message || e}`,
+            );
+            continue
+          }
 
-            const { data: collaborators } =
+
+          try {
+            const r =
               await octokit.rest.repos.listCollaborators({
                 owner,
                 repo: repoName,
                 per_page: 100,
               });
-
-            const issuesCount = issues.length;
-
-            issues.forEach((issue) => {
-              const issueData = this.issueToDTO(issue, repo);
-              builderData[dao.symbol].openIssues[unit.unitId].push(issueData);
-            });
-
-            builderData[dao.symbol].repos[repo] = {
-              openIssues: issuesCount,
-              private: repoData.private,
-              access: collaborators.map((c) => ({
-                username: c.login,
-                img: c.avatar_url,
-              })),
-              stars: repoData.stargazers_count,
-            };
+            collaborators = r.data
           } catch (e) {
-            this.logger.error(
-              `Failed to fetch issues for ${repo}. Status: ${e?.status}. Message: ${e?.message || e}`,
+            this.logger.warn(
+              `Failed to fetch collaborators for ${repo}. Status: ${e?.status}. Message: ${e?.message || e}`,
             );
           }
           await sleep(1)
+
+          builderData[dao.symbol].repos[repo] = {
+            openIssues: issuesCount,
+            private: repoData.private,
+            access: collaborators ? collaborators.map((c) => ({
+              username: c.login,
+              img: c.avatar_url,
+            })) : undefined,
+            stars: repoData.stargazers_count,
+          };
         }
       }
     }

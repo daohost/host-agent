@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { Command } from 'nestjs-command';
+import { GithubService } from './github.service';
 
 @Injectable()
 export class GithubCommand {

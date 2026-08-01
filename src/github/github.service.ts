@@ -300,6 +300,7 @@ export class GithubService implements OnModuleInit {
             owner,
             repo: repoName,
           });
+          await sleep(1)
 
           const { data: collaborators } =
             await octokit.rest.repos.listCollaborators({

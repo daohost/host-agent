@@ -285,7 +285,7 @@ export class GithubService implements OnModuleInit {
             `Failed to fetch issues for ${repo}. Status: ${e?.status}. Message: ${e?.message || e}`
           );
         }
-        await sleep(1)
+        await sleep(2)
       }
 
       for (const repo of repos) {
@@ -349,10 +349,14 @@ export class GithubService implements OnModuleInit {
               per_page: 100,
             });
 
+            await sleep(1)
+
             const { data: repoData } = await octokit.rest.repos.get({
               owner,
               repo: repoName,
             });
+
+            await sleep(1)
 
             const { data: collaborators } =
               await octokit.rest.repos.listCollaborators({
@@ -382,6 +386,7 @@ export class GithubService implements OnModuleInit {
               `Failed to fetch issues for ${repo}. Status: ${e?.status}. Message: ${e?.message || e}`,
             );
           }
+          await sleep(2)
         }
       }
     }

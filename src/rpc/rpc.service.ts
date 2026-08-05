@@ -60,9 +60,11 @@ export class RpcService {
     if (!chain) {
       return undefined;
     }
-    const rpcFromEnv = this.configService.get("RPC_ETHEREUM")
-    if (rpcFromEnv) {
-      return rpcFromEnv
+    if (chainId == '1') {
+      const rpcFromEnv = this.configService.get("RPC_ETHEREUM")
+      if (rpcFromEnv) {
+        return rpcFromEnv
+      }
     }
     return chain.rpcUrls.default.http[0];
   }

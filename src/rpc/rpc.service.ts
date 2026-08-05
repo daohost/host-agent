@@ -60,6 +60,10 @@ export class RpcService {
     if (!chain) {
       return undefined;
     }
+    const rpcFromEnv = this.configService.get("RPC_ETHEREUM")
+    if (rpcFromEnv) {
+      return rpcFromEnv
+    }
     return chain.rpcUrls.default.http[0];
   }
 
@@ -72,7 +76,18 @@ export class RpcService {
   }
 
   private setPublicClient(chain: Chain) {
-    const rpcUrl = chain.rpcUrls.default[0];
+    let rpcUrl = chain.rpcUrls.default[0];
+    if (chain.id === 1) {
+      const rpcFromEnv = this.configService.get("RPC_ETHEREUM")
+      if (rpcFromEnv) {
+        rpcUrl = rpcFromEnv
+      }
+
+      if (!rpcUrl) {
+        throw new Error(`No RPC URL for ${chain.id}`);
+      }
+
+    }
 
     const publicClient = createPublicClient({
       chain: chain,

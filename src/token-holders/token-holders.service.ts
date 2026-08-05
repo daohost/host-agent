@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { daos, IDAOData } from '@daohost/host';
 import { ContractIndices } from '@daohost/host/out/host.types';
@@ -17,15 +17,17 @@ interface TransferLog {
 }
 
 @Injectable()
-export class TokenHoldersService {
+export class TokenHoldersService implements OnModuleInit {
   private readonly logger = new Logger(TokenHoldersService.name);
   private readonly stepByChain = {
+    1: 100_000,
     146: 200_000,
-    9745: 10_000,
+    9745: 1000_000,
   };
 
   private readonly tempDir = './temp/token-holders';
   private readonly enabled: boolean;
+  private bootDone = false;
 
   private readonly erc20ABI = [
     {
@@ -52,13 +54,23 @@ export class TokenHoldersService {
       Boolean(this.configService.get('tokenHoldersParsingEnabled')) ?? false;
   }
 
+  async onModuleInit() {
+    if (this.enabled) {
+      await this.updateTokenHolders();
+      this.bootDone = true;
+    }
+  }
+
   @Cron(CronExpression.EVERY_10_MINUTES)
   async handleCron() {
-    if (!this.enabled) return;
+    if (!this.enabled || !this.bootDone) {
+      return
+    }
     await this.updateTokenHolders();
   }
 
   async updateTokenHolders() {
+    this.logger.debug('Updating token holders');
     for (const dao of daos) {
       await this.updateTokenHoldersForDao(dao);
     }
@@ -117,15 +129,14 @@ export class TokenHoldersService {
     for (const chainId in dao.deployments) {
       const deployments = dao.deployments[chainId];
 
-      const daoToken = deployments?.[ContractIndices.DAO_TOKEN_5];
-
-      if (!daoToken) continue;
+      const govToken = deployments?.[ContractIndices.DAO_TOKEN_5] || deployments?.[ContractIndices.SEED_TOKEN_1];
+      if (!govToken) continue;
 
       try {
         await this.updateForToken({
           daoKey: dao.symbol,
           chainId,
-          tokenAddress: daoToken,
+          tokenAddress: govToken,
         });
       } catch (e: any) {
         this.logger.error(
@@ -172,6 +183,14 @@ export class TokenHoldersService {
     const latestBlock = await client.getBlockNumber();
     let fromBlock = 0;
 
+    if (chainId == '9745') {
+      // STBL_DAO block
+      fromBlock = 8337266
+    } else if (chainId == '1') {
+      // seedMEVBOTS block
+      fromBlock = 25675037
+    }
+
     if (fs.existsSync(stateFile)) {
       const state = JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
       fromBlock = state.lastBlock + 1;
@@ -187,7 +206,7 @@ export class TokenHoldersService {
       `[${daoKey}] ${chainId} ${tokenAddress} ${fromBlock} → ${latestBlock}`,
     );
 
-    const step = this.stepByChain[chainId];
+    const step = this.stepByChain[chainId] || 100000;
     const logs = await this.fetchTransferLogs({
       rpc,
       tokenAddress,
@@ -252,6 +271,7 @@ export class TokenHoldersService {
     const logs: TransferLog[] = [];
 
     for (let i = opts.from; i <= opts.to; i += opts.step) {
+      process.stdout.write('.')
       const end = Math.min(i + opts.step - 1, opts.to);
 
       const cmd = [
@@ -263,6 +283,7 @@ export class TokenHoldersService {
         `--address ${opts.tokenAddress}`,
         '--json',
       ].join(' ');
+      //this.logger.debug(cmd)
 
       try {
         const raw = execSync(cmd, { encoding: 'utf-8' });

@@ -33,6 +33,10 @@ export class GithubService implements OnModuleInit {
   }
 
   async onModuleInit() {
+    const enabled = this.config.get('GITHUB_ENABLED') !== 'false'
+    if (!enabled) {
+      return
+    }
     const appId = this.config.getOrThrow<string>('APP_ID');
     const privateKeyPath = this.config.getOrThrow<string>('PRIVATE_KEY_PATH');
     const privateKey = fs.readFileSync(privateKeyPath, 'utf-8');

@@ -286,7 +286,7 @@ export class TokenHoldersService implements OnModuleInit {
         `--address ${opts.tokenAddress}`,
         '--json',
       ].join(' ');
-      //this.logger.debug(cmd)
+      this.logger.debug(cmd)
 
       try {
         const raw = execSync(cmd, { encoding: 'utf-8' });

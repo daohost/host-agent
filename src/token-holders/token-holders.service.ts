@@ -189,6 +189,9 @@ export class TokenHoldersService implements OnModuleInit {
     } else if (chainId == '1') {
       // seedMEVBOTS block
       fromBlock = 25675037
+    } else if (chainId == '146') {
+      // STBL_DAO
+      fromBlock = 51831479
     }
 
     if (fs.existsSync(stateFile)) {

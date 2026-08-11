@@ -50,13 +50,10 @@ export class AnalyticsService implements OnModuleInit {
   }
 
   getPricesList(): IHostAgentMemoryV3['data']['prices'] {
-    const allSymbols = analyticsAssets.flatMap((asset) => [
-      asset.symbol,
-      ...asset.wrappedSymbols,
-    ]);
+    const publicSymbols = analyticsAssets.map((asset) => asset.symbol);
     return Object.fromEntries(
       Object.entries(this.analytics.prices).filter(([symbol]) => {
-        return allSymbols.includes(symbol);
+        return publicSymbols.includes(symbol);
       }),
     );
   }

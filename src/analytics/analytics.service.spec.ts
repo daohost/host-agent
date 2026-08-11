@@ -36,7 +36,7 @@ describe('AnalyticsService', () => {
     };
   }
 
-  it('publishes primary and wrapped symbols after a successful refresh', async () => {
+  it('publishes primary symbols without wrapped aliases', async () => {
     const { service } = createService();
 
     await service.onModuleInit();
@@ -44,13 +44,18 @@ describe('AnalyticsService', () => {
     expect(service.getChainTvls()).toEqual({ '146': 123 });
     expect(service.getPricesList()).toMatchObject({
       STBL: pairs.STBL,
-      xSTBL: pairs.STBL,
       BTC: pairs.BTC,
-      WBTC: pairs.BTC,
       ETH: pairs.ETH,
-      wETH: pairs.ETH,
-      weETH: pairs.ETH,
     });
+    expect(service.getPricesList()).not.toHaveProperty('xSTBL');
+    expect(service.getPricesList()).not.toHaveProperty('WBTC');
+    expect(service.getPricesList()).not.toHaveProperty('wETH');
+    expect(service.getPricesList()).not.toHaveProperty('weETH');
+
+    expect(service.getPriceBySymbol('xSTBL')).toBe(+pairs.STBL.priceUsd);
+    expect(service.getPriceBySymbol('WBTC')).toBe(+pairs.BTC.priceUsd);
+    expect(service.getPriceBySymbol('wETH')).toBe(+pairs.ETH.priceUsd);
+    expect(service.getPriceBySymbol('weETH')).toBe(+pairs.ETH.priceUsd);
   });
 
   it('publishes successful prices when one asset request fails', async () => {

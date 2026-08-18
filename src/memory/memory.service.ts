@@ -11,6 +11,7 @@ import { getFullDaos } from 'src/utils/getDaos';
 import { now } from 'src/utils/now';
 import { TokenHoldersService } from '../token-holders/token-holders.service';
 import { IBuildersMemoryV3 } from '@daohost/host/out/api';
+import { MerklService } from 'src/merkl/merkl.service';
 
 @Injectable()
 export class MemoryV2Service {
@@ -26,6 +27,7 @@ export class MemoryV2Service {
     private readonly telegramService: TelegramService,
     private readonly twitterService: TwitterService,
     private readonly tokenHoldersService: TokenHoldersService,
+    private readonly merklService: MerklService,
   ) {
     this.daos = getFullDaos();
   }
@@ -64,10 +66,12 @@ export class MemoryV2Service {
       const twitterFollowers =
         this.twitterService.twitterFollowers[dao.symbol] ?? {};
       const holders = this.tokenHoldersService.getDaoTokenHolder(dao.symbol);
+      const merkl = this.merklService.getDaoMerklData(dao.symbol);
       result[dao.symbol] = {
         oraclePrice: '0',
         coingeckoPrice: '0',
         holders,
+        merkl,
         socialUsers: {
           ...tgUsers,
           ...twitterFollowers,

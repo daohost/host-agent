@@ -5,6 +5,7 @@ type MerklData = NonNullable<IDAOAPIDataV2['merkl']>;
 
 export interface MerklOpportunity {
   chainId: number;
+  status: string;
   name: string;
   apr: number;
   totalApr?: number;
@@ -27,6 +28,16 @@ export function mapSeedMevBotsOpportunity(
   const campaignId = opportunity.rewardsRecord?.breakdowns[0]?.campaignId;
   const apr = opportunity.totalApr ?? opportunity.apr;
 
+  if (opportunity.chainId !== 1) {
+    throw new Error(
+      `seedMEVBOTS Merkl opportunity has unexpected chain: ${opportunity.chainId}`,
+    );
+  }
+  if (opportunity.status !== 'LIVE') {
+    throw new Error(
+      `seedMEVBOTS Merkl opportunity is not live: ${opportunity.status}`,
+    );
+  }
   if (!campaignId) {
     throw new Error('Merkl opportunity has no active campaign');
   }

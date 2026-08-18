@@ -1,51 +1,56 @@
-import { ContractIndices } from '@daohost/host/out/host.types';
-import { mapSeedMevBotsOpportunity } from './merkl.mapper';
+jest.mock('@merkl/api', () => ({ MerklApi: jest.fn() }));
 
-describe('mapSeedMevBotsOpportunity', () => {
-  it('maps the displayed APR and campaign into the seed token entry', () => {
-    const result = mapSeedMevBotsOpportunity({
-      chainId: 1,
-      name: 'Hold MEV Machines SEED',
-      apr: 590,
-      totalApr: 596.1648072800859,
-      latestCampaignEnd: '1787443200',
-      rewardsRecord: {
-        breakdowns: [
-          {
-            campaignId: '2316894702041849715',
-            token: {
-              address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-              symbol: 'USDC',
-              name: 'USD Coin',
-            },
-          },
-        ],
-      },
-    });
+import { MerklApi } from '@merkl/api';
+import { MerklService } from './merkl.service';
+import { opportunity } from './merkl.fixture';
 
-    expect(result['1'][String(ContractIndices.SEED_TOKEN_1)]).toEqual({
-      apr: 596.1648072800859,
-      campaignId: '2316894702041849715',
-      rewards: [
-        {
-          address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-          symbol: 'USDC',
-          name: 'USD Coin',
-        },
-      ],
-      name: 'Hold MEV Machines SEED',
-      endDate: '2026-08-23T00:00:00.000Z',
-    });
+describe('MerklService', () => {
+  const get = jest.fn();
+  const opportunities = jest.fn(() => ({ get }));
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (MerklApi as jest.Mock).mockReturnValue({ v4: { opportunities } });
   });
 
-  it('rejects an opportunity without an active campaign', () => {
-    expect(() =>
-      mapSeedMevBotsOpportunity({
-        chainId: 1,
-        name: 'Hold MEV Machines SEED',
-        apr: 0,
-        totalApr: 0,
-      }),
-    ).toThrow('Merkl opportunity has no active campaign');
+  it('loads seedMEVBOTS data during module initialization', async () => {
+    get.mockResolvedValue({ data: opportunity, error: null, status: 200 });
+    const service = new MerklService();
+
+    await service.onModuleInit();
+
+    expect(opportunities).toHaveBeenCalledWith({
+      id: '9682604972499820963',
+    });
+    expect(service.getDaoMerklData('MEVBOTS')?.['1']['1'].apr).toBe(
+      596.1648072800859,
+    );
+    expect(service.getDaoMerklData('STBL')).toBeUndefined();
+  });
+
+  it('retains the last successful value after an API error response', async () => {
+    get
+      .mockResolvedValueOnce({ data: opportunity, error: null, status: 200 })
+      .mockResolvedValueOnce({ data: null, error: {}, status: 503 });
+    const service = new MerklService();
+
+    await service.updateMerklData();
+    const lastSuccessfulValue = service.getDaoMerklData('MEVBOTS');
+    await service.updateMerklData();
+
+    expect(service.getDaoMerklData('MEVBOTS')).toBe(lastSuccessfulValue);
+  });
+
+  it('retains the last successful value after a network failure', async () => {
+    get
+      .mockResolvedValueOnce({ data: opportunity, error: null, status: 200 })
+      .mockRejectedValueOnce(new Error('network unavailable'));
+    const service = new MerklService();
+
+    await service.updateMerklData();
+    const lastSuccessfulValue = service.getDaoMerklData('MEVBOTS');
+    await service.updateMerklData();
+
+    expect(service.getDaoMerklData('MEVBOTS')).toBe(lastSuccessfulValue);
   });
 });

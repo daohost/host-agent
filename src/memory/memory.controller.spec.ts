@@ -43,6 +43,8 @@ import { TxMonitoringService } from 'src/tx-sender/tx-monitoring.service';
 import { MemoryController } from './memory.controller';
 import { MemoryV2Service } from './memory.service';
 
+const seedMEVBOTSAddress = '0x999995c72dd0c41241552c9c889a93dc78d99999';
+
 describe('MemoryController Merkl integration', () => {
   let app: INestApplication;
 
@@ -84,7 +86,7 @@ describe('MemoryController Merkl integration', () => {
               symbol === 'MEVBOTS'
                 ? {
                     '1': {
-                      '1': {
+                      [seedMEVBOTSAddress]: {
                         apr: 596.1648072800859,
                         campaignId: '2316894702041849715',
                         rewards: [],
@@ -111,7 +113,9 @@ describe('MemoryController Merkl integration', () => {
       .expect(200);
     const body = response.body as IHostAgentMemoryV3;
 
-    expect(body.data.daos.MEVBOTS.merkl?.['1']['1']).toMatchObject({
+    expect(
+      body.data.daos.MEVBOTS.merkl?.['1'][seedMEVBOTSAddress],
+    ).toMatchObject({
       apr: 596.1648072800859,
       campaignId: '2316894702041849715',
     });

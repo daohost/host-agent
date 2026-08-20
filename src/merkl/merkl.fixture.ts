@@ -1,5 +1,7 @@
 export const opportunity = {
+  identifier: '0x999995C72dd0c41241552C9C889A93Dc78D99999',
   chainId: 1,
+  action: 'HOLD',
   status: 'LIVE',
   name: 'Hold MEV Machines SEED',
   apr: 590,

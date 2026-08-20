@@ -1,5 +1,4 @@
 import { IDAOAPIDataV2 } from '@daohost/host/out/api';
-import { ContractIndices } from '@daohost/host/out/host.types';
 
 type MerklData = NonNullable<IDAOAPIDataV2['merkl']>;
 
@@ -24,6 +23,7 @@ export interface MerklOpportunity {
 
 export function mapSeedMevBotsOpportunity(
   opportunity: MerklOpportunity,
+  seedMEVBOTSAddress: `0x${string}`,
 ): MerklData {
   const campaignId = opportunity.rewardsRecord?.breakdowns[0]?.campaignId;
   const apr = opportunity.totalApr ?? opportunity.apr;
@@ -67,7 +67,7 @@ export function mapSeedMevBotsOpportunity(
 
   return {
     [String(opportunity.chainId)]: {
-      [String(ContractIndices.SEED_TOKEN_1)]: {
+      [seedMEVBOTSAddress]: {
         apr,
         campaignId,
         rewards,

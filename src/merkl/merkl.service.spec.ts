@@ -4,6 +4,8 @@ import { MerklApi } from '@merkl/api';
 import { MerklService } from './merkl.service';
 import { opportunity } from './merkl.fixture';
 
+const seedMEVBOTSAddress = '0x999995c72dd0c41241552c9c889a93dc78d99999';
+
 describe('MerklService', () => {
   const get = jest.fn();
   const opportunities = jest.fn(() => ({ get }));
@@ -22,9 +24,9 @@ describe('MerklService', () => {
     expect(opportunities).toHaveBeenCalledWith({
       id: '9682604972499820963',
     });
-    expect(service.getDaoMerklData('MEVBOTS')?.['1']['1'].apr).toBe(
-      596.1648072800859,
-    );
+    expect(
+      service.getDaoMerklData('MEVBOTS')?.['1'][seedMEVBOTSAddress].apr,
+    ).toBe(596.1648072800859);
     expect(service.getDaoMerklData('STBL')).toBeUndefined();
   });
 

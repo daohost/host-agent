@@ -1,4 +1,6 @@
+import { daos } from '@daohost/host';
 import { IDAOAPIDataV2 } from '@daohost/host/out/api';
+import { ContractIndices } from '@daohost/host/out/host.types';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { MerklApi } from '@merkl/api';
@@ -7,6 +9,7 @@ import { mapSeedMevBotsOpportunity } from './merkl.mapper';
 const MERKL_API_URL = 'https://api.merkl.xyz';
 const MEVBOTS_DAO_SYMBOL = 'MEVBOTS';
 const SEED_MEVBOTS_OPPORTUNITY_ID = '9682604972499820963';
+const ETHEREUM_CHAIN_ID = '1';
 
 type MerklData = NonNullable<IDAOAPIDataV2['merkl']>;
 
@@ -33,6 +36,7 @@ export class MerklService implements OnModuleInit {
 
       this.merklByDao[MEVBOTS_DAO_SYMBOL] = mapSeedMevBotsOpportunity(
         response.data,
+        this.getSeedMEVBOTSAddress(),
       );
     } catch (error) {
       this.logger.warn(
@@ -47,5 +51,16 @@ export class MerklService implements OnModuleInit {
 
   private getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
+  }
+
+  private getSeedMEVBOTSAddress(): `0x${string}` {
+    const address = daos.find((dao) => dao.symbol === MEVBOTS_DAO_SYMBOL)
+      ?.deployments[ETHEREUM_CHAIN_ID]?.[ContractIndices.SEED_TOKEN_1];
+
+    if (!address) {
+      throw new Error('seedMEVBOTS deployment address is missing');
+    }
+
+    return address;
   }
 }

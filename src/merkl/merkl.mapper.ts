@@ -3,7 +3,9 @@ import { IDAOAPIDataV2 } from '@daohost/host/out/api';
 type MerklData = NonNullable<IDAOAPIDataV2['merkl']>;
 
 export interface MerklOpportunity {
+  identifier: string;
   chainId: number;
+  action: string;
   status: string;
   name: string;
   apr: number;
@@ -21,21 +23,39 @@ export interface MerklOpportunity {
   };
 }
 
-export function mapSeedMevBotsOpportunity(
+export interface SeedTokenDeployment {
+  daoSymbol: string;
+  chainId: string;
+  address: `0x${string}`;
+}
+
+export function mapSeedTokenOpportunity(
   opportunity: MerklOpportunity,
-  seedMEVBOTSAddress: `0x${string}`,
+  deployment: SeedTokenDeployment,
 ): MerklData {
   const campaignId = opportunity.rewardsRecord?.breakdowns[0]?.campaignId;
   const apr = opportunity.totalApr ?? opportunity.apr;
 
-  if (opportunity.chainId !== 1) {
+  if (String(opportunity.chainId) !== deployment.chainId) {
     throw new Error(
-      `seedMEVBOTS Merkl opportunity has unexpected chain: ${opportunity.chainId}`,
+      `${deployment.daoSymbol} seed-token opportunity has unexpected chain: ${opportunity.chainId}`,
+    );
+  }
+  if (
+    opportunity.identifier.toLowerCase() !== deployment.address.toLowerCase()
+  ) {
+    throw new Error(
+      `${deployment.daoSymbol} seed-token opportunity has unexpected identifier: ${opportunity.identifier}`,
+    );
+  }
+  if (opportunity.action !== 'HOLD') {
+    throw new Error(
+      `${deployment.daoSymbol} seed-token opportunity has unexpected action: ${opportunity.action}`,
     );
   }
   if (opportunity.status !== 'LIVE') {
     throw new Error(
-      `seedMEVBOTS Merkl opportunity is not live: ${opportunity.status}`,
+      `${deployment.daoSymbol} seed-token opportunity is not live: ${opportunity.status}`,
     );
   }
   if (!campaignId) {
@@ -66,8 +86,8 @@ export function mapSeedMevBotsOpportunity(
     : undefined;
 
   return {
-    [String(opportunity.chainId)]: {
-      [seedMEVBOTSAddress]: {
+    [deployment.chainId]: {
+      [deployment.address]: {
         apr,
         campaignId,
         rewards,

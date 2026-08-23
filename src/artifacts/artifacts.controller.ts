@@ -22,6 +22,7 @@ import {
   matchesLoseReason,
   matchesMiner,
   sortArtifactsByValue,
+  validateArtifactSort,
 } from './artifact-filters';
 
 @Controller('artifacts')
@@ -116,6 +117,7 @@ export class ArtifactsController {
     @Query('sort') sort?: string,
     @Query('order') order?: string,
   ) {
+    const validatedSort = validateArtifactSort(sort, order);
     const flight = await this.flightsService.findById(flightId);
     if (!flight) {
       throw new NotFoundException(`Flight ${flightId} not found`);
@@ -128,8 +130,8 @@ export class ArtifactsController {
       mined
         .filter((a) => matchesLoseReason(a, loseReason))
         .map((a) => this.enrich(a, flight.id)),
-      sort,
-      order,
+      validatedSort.sort,
+      validatedSort.order,
     );
 
     return this.paginate(all, page, limit, totalsByLoseReason);
@@ -166,6 +168,7 @@ export class ArtifactsController {
     @Query('sort') sort?: string,
     @Query('order') order?: string,
   ) {
+    const validatedSort = validateArtifactSort(sort, order);
     const flightIndex = await this.buildFlightIndex();
     const mined = this.artifactsService
       .findAll()
@@ -175,8 +178,8 @@ export class ArtifactsController {
       mined
         .filter((a) => matchesLoseReason(a, loseReason))
         .map((a) => this.enrich(a, flightIndex.get(a.id))),
-      sort,
-      order,
+      validatedSort.sort,
+      validatedSort.order,
     );
 
     return this.paginate(all, page, limit, totalsByLoseReason);

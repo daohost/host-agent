@@ -3,6 +3,7 @@ import {
   matchesLoseReason,
   matchesMiner,
   sortArtifactsByValue,
+  validateArtifactSort,
 } from './artifact-filters';
 
 describe('artifact filters', () => {
@@ -68,5 +69,45 @@ describe('artifact filters', () => {
     expect(
       sortArtifactsByValue(artifacts, 'income', 'desc').map(({ id }) => id),
     ).toEqual(['valued', 'missing']);
+  });
+
+  it('defaults value sorting to descending order', () => {
+    const artifacts = [
+      { id: 'low', value: { income: 1 } },
+      { id: 'high', value: { income: 2 } },
+    ] as never[];
+
+    expect(
+      sortArtifactsByValue(artifacts, 'income').map(({ id }) => id),
+    ).toEqual(['high', 'low']);
+  });
+
+  it('sorts zero and negative values numerically', () => {
+    const artifacts = [
+      { id: 'zero', value: { profit: 0 } },
+      { id: 'positive', value: { profit: 2 } },
+      { id: 'negative', value: { profit: -2 } },
+    ] as never[];
+
+    expect(
+      sortArtifactsByValue(artifacts, 'profit', 'asc').map(({ id }) => id),
+    ).toEqual(['negative', 'zero', 'positive']);
+  });
+
+  it('validates supported sort query values', () => {
+    expect(validateArtifactSort('income', 'asc')).toEqual({
+      sort: 'income',
+      order: 'asc',
+    });
+    expect(validateArtifactSort()).toEqual({
+      sort: undefined,
+      order: undefined,
+    });
+    expect(() => validateArtifactSort('created', 'asc')).toThrow(
+      'sort must be one of: income, profit',
+    );
+    expect(() => validateArtifactSort('income', 'sideways')).toThrow(
+      'order must be one of: asc, desc',
+    );
   });
 });
